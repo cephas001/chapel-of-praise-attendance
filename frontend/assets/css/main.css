@@ -1,0 +1,17 @@
+@import "@fontsource/poppins";
+@import "@fontsource-variable/roboto";
+@import "@fontsource-variable/montserrat";
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+html,
+body {
+  background-color: #f8fafc;
+  font-family: "Poppins", sans-serif, system-ui, sans-serif !important;
+}
+
+@theme {
+  --font-montserrat: "Montserrat", sans-serif;
+  --font-roboto: "Roboto", sans-serif;
+  --font-poppins: "Poppins", sans-serif;
+}

@@ -212,7 +212,29 @@
               "
               class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100"
             >
-              <div class="relative bg-black border-b border-gray-100">
+              <div
+                v-if="!isCameraActive"
+                class="p-8 sm:p-12 flex flex-col items-center justify-center text-center bg-gray-50 border-b border-gray-100 min-h-[300px]"
+              >
+                <button
+                  @click="startCamera"
+                  class="w-20 h-20 bg-black text-white rounded-full flex items-center justify-center mb-6 shadow-xl hover:scale-105 transition-all duration-200 border-4 border-gray-200 hover:border-gray-300"
+                >
+                  <Icon
+                    name="material-symbols:qr-code-scanner"
+                    class="text-4xl"
+                  />
+                </button>
+                <h3 class="text-lg font-black text-black font-montserrat mb-2">
+                  Camera Paused
+                </h3>
+                <p class="text-sm text-gray-500 font-medium max-w-xs">
+                  Tap the button to activate the scanner. Keeping the camera
+                  paused saves your device's battery and CPU.
+                </p>
+              </div>
+
+              <div v-else class="relative bg-black border-b border-gray-100">
                 <div class="absolute top-4 left-4 z-10">
                   <div
                     class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-full flex items-center gap-2 border border-white/10"
@@ -226,10 +248,21 @@
                     >
                   </div>
                 </div>
+
                 <div
                   id="reader"
                   class="w-full min-h-[300px] sm:min-h-[400px]"
                 ></div>
+
+                <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+                  <button
+                    @click="stopCamera"
+                    class="px-6 py-2.5 bg-red-600/90 backdrop-blur-md text-white text-xs font-bold uppercase tracking-widest rounded-full shadow-lg border border-red-500 hover:bg-red-700 transition-colors flex items-center gap-2"
+                  >
+                    <Icon name="material-symbols:stop-circle" class="text-lg" />
+                    Stop Scanner
+                  </button>
+                </div>
               </div>
 
               <div class="p-6 sm:p-8">
@@ -248,9 +281,17 @@
                     </p>
                   </div>
                   <div
-                    class="px-4 py-2 bg-gray-50 rounded-lg text-xs font-bold text-gray-500 uppercase tracking-widest border border-gray-200"
+                    class="px-4 py-2 bg-gray-50 rounded-lg text-xs font-bold text-gray-500 uppercase tracking-widest border border-gray-200 flex items-center gap-2"
                   >
-                    Auto-Scan Active
+                    <span
+                      class="w-2 h-2 rounded-full"
+                      :class="
+                        isCameraActive
+                          ? 'bg-green-500 animate-pulse'
+                          : 'bg-gray-400'
+                      "
+                    ></span>
+                    {{ isCameraActive ? "Scanning..." : "Standing By" }}
                   </div>
                 </div>
               </div>
@@ -387,6 +428,7 @@ const selectedEventId = ref(null);
 
 const isLoadingEvents = ref(false);
 const isManualSubmitting = ref(false);
+const isCameraActive = ref(false); // NEW STATE FOR CAMERA TOGGLE
 
 const selectedEventName = computed(() => {
   const event = activeEvents.value.find((e) => e.id === selectedEventId.value);
@@ -433,10 +475,8 @@ const syncRecords = async () => {
         },
       });
 
-      // If successful (no error thrown), delete from local DB
       await db.unsynced_scans.delete(record.id);
     } catch (error) {
-      // Grab status from the Nuxt FetchError object
       const status = error.statusCode || error.response?.status;
 
       if (status === 409 || status === 403) {
@@ -451,7 +491,6 @@ const syncRecords = async () => {
         if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
         await db.unsynced_scans.delete(record.id);
       } else {
-        // Only break if it's a true network failure (500, network down, etc)
         console.error("Network died during sync loop:", error);
         break;
       }
@@ -503,14 +542,23 @@ const handleManualSubmit = async () => {
   if (manualMatric.value) {
     isManualSubmitting.value = true;
     await handleScan(manualMatric.value);
-    manualMatric.value = "";
+    manualMatric.value = "FT"; // reset to base
     isManualSubmitting.value = false;
   }
 };
 
-const startCamera = () => {
+// NEW: Controlled Camera Logic
+const startCamera = async () => {
+  isCameraActive.value = true;
+  await nextTick(); // Wait for the DOM element <div id="reader"> to render
+
   if (!document.getElementById("reader")) return;
-  html5QrCode = new Html5Qrcode("reader");
+
+  // Only create the instance once
+  if (!html5QrCode) {
+    html5QrCode = new Html5Qrcode("reader");
+  }
+
   const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
   html5QrCode
@@ -519,25 +567,40 @@ const startCamera = () => {
       config,
       (decodedText) => {
         if (html5QrCode.isScanning) {
-          html5QrCode.pause(true);
-          handleScan(decodedText).then(() =>
-            setTimeout(() => {
-              if (html5QrCode.isScanning) html5QrCode.resume();
-            }, 1500),
+          html5QrCode.pause(true); // Pause feed while processing UI toasts
+          handleScan(decodedText).then(
+            () =>
+              setTimeout(() => {
+                if (html5QrCode && html5QrCode.isScanning) html5QrCode.resume();
+              }, 1500), // Auto-resume after 1.5 seconds so they can scan the next person
           );
         }
       },
       (err) => {},
     )
-    .catch((err) => console.log("Camera not detected/permitted"));
+    .catch((err) => {
+      console.log("Camera not detected/permitted");
+      isCameraActive.value = false;
+      alert(
+        "Unable to access the camera. Please check your browser permissions.",
+      );
+    });
+};
+
+const stopCamera = async () => {
+  if (html5QrCode && html5QrCode.isScanning) {
+    await html5QrCode.stop();
+  }
+  isCameraActive.value = false;
 };
 
 const checkEventStatus = async () => {
   if (!isOnline.value || !selectedEventId.value) return;
   try {
     const data = await useApiFetch(`/events/${selectedEventId.value}/status`);
-    if (data.status === "SYNCING_PHASE" && html5QrCode?.isScanning) {
-      html5QrCode.stop().catch((e) => console.error(e));
+    // Automatically kill the camera to save battery if admin triggers a Sync Phase
+    if (data.status === "SYNCING_PHASE" && isCameraActive.value) {
+      await stopCamera();
     }
     eventStatus.value = data.status;
   } catch (error) {
@@ -546,20 +609,23 @@ const checkEventStatus = async () => {
 };
 
 watch(eventStatus, async (newStatus, oldStatus) => {
-  if (
-    oldStatus === "SYNCING_PHASE" &&
-    (newStatus === "SIGN_IN_ACTIVE" || newStatus === "SIGN_OUT_ACTIVE")
-  ) {
-    await nextTick();
-    startCamera();
+  // We no longer auto-start the camera when phase changes.
+  // We force them to manually click the button to save battery.
+  if (newStatus === "SYNCING_PHASE" && isCameraActive.value) {
+    await stopCamera();
   }
 });
 
 const selectEvent = async (eventId) => {
+  // Turn off the camera if they click a different event to reset the flow
+  if (isCameraActive.value) await stopCamera();
+
   selectedEventId.value = eventId;
   await nextTick();
-  startCamera();
   checkEventStatus();
+
+  // Safely manage the polling interval
+  if (pollInterval) clearInterval(pollInterval);
   pollInterval = setInterval(checkEventStatus, 10000);
 };
 
@@ -582,8 +648,8 @@ onMounted(() => {
   loadActiveEvents();
 });
 
-onBeforeUnmount(() => {
-  if (html5QrCode && html5QrCode.isScanning) html5QrCode.stop();
+onBeforeUnmount(async () => {
+  if (isCameraActive.value) await stopCamera();
   window.removeEventListener("online", () => {
     isOnline.value = true;
   });

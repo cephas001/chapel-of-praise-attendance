@@ -19,6 +19,7 @@ enum EventStatus {
   SYNCING_PHASE
   SIGN_OUT_ACTIVE
   COMPLETED
+  ARCHIVED
 }
 
 enum ScanType {
@@ -80,7 +81,7 @@ model AttendanceRecord {
   usher_id      String
 
   // Relations
-  event         Event    @relation(fields: [event_id], references: [id])
+  event         Event    @relation(fields: [event_id], references: [id], onDelete: Cascade)
   student       Student  @relation(fields: [matric_number], references: [matric_number])
   usher         User     @relation("ScanUsher", fields: [usher_id], references: [id])
 

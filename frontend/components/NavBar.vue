@@ -1,0 +1,225 @@
+<template>
+  <div>
+    <nav
+      v-if="token"
+      class="fixed top-0 left-0 w-full z-40 bg-white/70 backdrop-blur-md shadow-sm border-b border-gray-100 font-sans"
+    >
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-20">
+          <div class="flex items-center gap-3">
+            <div
+              class="bg-black text-white w-8 h-8 rounded-xl shadow-sm flex items-center justify-center"
+            >
+              <Icon name="material-symbols:token" class="text-md" />
+            </div>
+            <span
+              class="font-black text-black tracking-wide text-lg font-montserrat uppercase"
+            >
+              COPAMS
+            </span>
+          </div>
+
+          <div
+            class="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2 mt-1"
+          >
+            <NuxtLink
+              to="/"
+              class="font-montserrat text-sm tracking-wide transition-all duration-200 pb-1 border-b-2"
+              :class="
+                $route.path === '/'
+                  ? 'font-black text-black border-black'
+                  : 'font-semibold text-gray-500 border-transparent hover:text-black'
+              "
+            >
+              Homepage
+            </NuxtLink>
+
+            <NuxtLink
+              to="/scanner"
+              class="font-montserrat text-sm tracking-wide transition-all duration-200 pb-1 border-b-2"
+              :class="
+                $route.path === '/scanner'
+                  ? 'font-black text-black border-black'
+                  : 'font-semibold text-gray-500 border-transparent hover:text-black'
+              "
+            >
+              Scanner
+            </NuxtLink>
+
+            <NuxtLink
+              v-if="user?.role === 'SUPER_ADMIN'"
+              to="/admin"
+              class="font-montserrat text-sm tracking-wide transition-all duration-200 pb-1 border-b-2"
+              :class="
+                $route.path === '/admin'
+                  ? 'font-black text-black border-black'
+                  : 'font-semibold text-gray-500 border-transparent hover:text-black'
+              "
+            >
+              Dashboard
+            </NuxtLink>
+          </div>
+
+          <div class="flex items-center gap-2 sm:gap-4">
+            <div class="hidden lg:flex flex-col text-right mr-1">
+              <span class="text-xs font-black text-black font-montserrat">{{
+                user?.username
+              }}</span>
+              <span
+                class="text-[10px] font-bold text-gray-400 uppercase tracking-widest font-montserrat mt-0.5"
+              >
+                {{ user?.role?.replace("_", " ") }}
+              </span>
+            </div>
+
+            <div
+              class="hidden sm:flex w-10 h-10 rounded-full bg-gray-100 border border-gray-200 items-center justify-center text-gray-400 overflow-hidden shadow-inner"
+            >
+              <Icon name="material-symbols:person" class="text-xl" />
+            </div>
+
+            <div class="h-6 w-px bg-gray-200 hidden sm:block mx-1"></div>
+
+            <button
+              @click="handleLogout"
+              title="Logout"
+              class="hidden sm:flex text-gray-400 hover:text-red-600 hover:bg-red-50 p-2.5 rounded-full transition-all duration-200 active:scale-95 items-center justify-center"
+            >
+              <Icon name="material-symbols:logout" class="text-xl" />
+            </button>
+
+            <button
+              @click="isMobileMenuOpen = true"
+              class="md:hidden text-black p-2.5 rounded-full hover:bg-gray-100 transition-colors flex items-center justify-center"
+            >
+              <Icon name="material-symbols:menu" class="text-2xl" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <div
+      v-if="isMobileMenuOpen && token"
+      @click="isMobileMenuOpen = false"
+      class="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm md:hidden transition-opacity duration-300"
+    ></div>
+
+    <aside
+      v-if="token"
+      class="fixed top-0 right-0 z-[60] h-screen w-[280px] bg-white shadow-2xl flex flex-col md:hidden transition-transform duration-300 ease-in-out transform"
+      :class="isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'"
+    >
+      <div
+        class="h-20 px-6 flex items-center justify-between border-b border-gray-100 shrink-0"
+      >
+        <span
+          class="font-black text-black font-montserrat uppercase tracking-wider"
+        >
+          Menu
+        </span>
+        <button
+          @click="isMobileMenuOpen = false"
+          class="p-2 bg-gray-50 rounded-full hover:bg-gray-200 text-black transition-colors flex items-center"
+        >
+          <Icon name="material-symbols:close" class="text-xl" />
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-3">
+        <NuxtLink
+          to="/"
+          @click="isMobileMenuOpen = false"
+          class="p-4 rounded-xl font-poppins font-bold text-sm tracking-wide transition-all duration-200 flex items-center gap-3 border"
+          :class="
+            $route.path === '/'
+              ? 'bg-gray-100 text-black border-gray-200 shadow-inner'
+              : 'text-gray-500 border-transparent hover:bg-gray-50 hover:text-black hover:border-gray-200'
+          "
+        >
+          Homepage
+        </NuxtLink>
+
+        <NuxtLink
+          to="/scanner"
+          @click="isMobileMenuOpen = false"
+          class="p-4 rounded-xl font-poppins font-bold text-sm tracking-wide transition-all duration-200 flex items-center gap-3 border"
+          :class="
+            $route.path === '/scanner'
+              ? 'bg-gray-100 text-black border-gray-200 shadow-inner'
+              : 'text-gray-500 border-transparent hover:bg-gray-50 hover:text-black hover:border-gray-200'
+          "
+        >
+          Scanner
+        </NuxtLink>
+
+        <NuxtLink
+          v-if="user?.role === 'SUPER_ADMIN'"
+          to="/admin"
+          @click="isMobileMenuOpen = false"
+          class="p-4 rounded-xl font-poppins font-bold text-sm tracking-wide transition-all duration-200 flex items-center gap-3 border"
+          :class="
+            $route.path === '/admin'
+              ? 'bg-gray-100 text-black border-gray-200 shadow-inner'
+              : 'text-gray-500 border-transparent hover:bg-gray-50 hover:text-black hover:border-gray-200'
+          "
+        >
+          Dashboard
+        </NuxtLink>
+      </div>
+
+      <div class="p-6 border-t border-gray-100 bg-gray-50/50 shrink-0">
+        <div
+          class="flex items-center justify-between bg-white border border-gray-200 p-3 rounded-xl shadow-sm"
+        >
+          <div class="flex items-center gap-3 overflow-hidden">
+            <div
+              class="h-10 w-10 shrink-0 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 border border-gray-200"
+            >
+              <Icon name="material-symbols:person" class="text-xl" />
+            </div>
+            <div class="flex flex-col truncate">
+              <span
+                class="text-sm font-black text-black font-poppins truncate"
+                >{{ user?.username }}</span
+              >
+              <span
+                class="text-[9px] font-bold text-gray-400 uppercase tracking-widest font-poppins truncate"
+              >
+                {{ user?.role?.replace("_", " ") }}
+              </span>
+            </div>
+          </div>
+
+          <button
+            @click="handleLogout"
+            title="Logout"
+            class="shrink-0 text-gray-400 hover:text-red-600 hover:bg-red-50 h-10 w-10 rounded-lg flex items-center justify-center transition-colors"
+          >
+            <Icon name="material-symbols:logout" class="text-xl" />
+          </button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</template>
+
+<script setup>
+import { ref } from "vue";
+import { useAuth } from "~/composables/useAuth";
+import { useRouter } from "vue-router";
+
+const { user, token, logout } = useAuth();
+const router = useRouter();
+
+// Controls the mobile slide-out drawer
+const isMobileMenuOpen = ref(false);
+
+const handleLogout = () => {
+  if (confirm("Are you sure you want to log out?")) {
+    logout();
+    isMobileMenuOpen.value = false;
+    router.push("/login");
+  }
+};
+</script>

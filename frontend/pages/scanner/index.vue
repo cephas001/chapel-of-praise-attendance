@@ -285,8 +285,8 @@
                   <input
                     v-model="manualMatric"
                     type="text"
-                    placeholder="Enter Registration ID..."
-                    class="w-full border-gray-400 focus:border-black border rounded-md py-3 px-4 text-black font-poppins transition-all duration-200 placeholder:text-gray-400 outline-none"
+                    placeholder="FT"
+                    class="w-full border-gray-400 focus:border-black border rounded-md py-3 px-4 text-black font-poppins transition-all duration-200 placeholder:text-gray-400 placeholder:text-sm outline-none"
                     required
                   />
                 </div>
@@ -374,7 +374,7 @@ const { user, token, initAuth } = useAuth();
 
 const eventStatus = ref("SIGN_IN_ACTIVE");
 let pollInterval = null;
-const manualMatric = ref("");
+const manualMatric = ref("FT");
 const scannedMatric = ref("");
 const scanWarning = ref(null);
 const syncErrors = ref([]);

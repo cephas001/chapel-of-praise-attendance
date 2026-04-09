@@ -58,4 +58,11 @@ export default defineNuxtConfig({
       apiBase: process.env.NUXT_PUBLIC_API_BASE || "http://localhost:5000/api",
     },
   },
+
+  routeRules: {
+    // Tell Nuxt to proxy all requests from /api to your backend
+    "/api-proxy/**": {
+      proxy: "https://chapel-of-praise-attendance-backend.onrender.com/api/**",
+    },
+  },
 });

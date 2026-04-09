@@ -15,7 +15,7 @@ export const useApiFetch = (request, opts) => {
     },
     // NEW: Automatically catch Auth errors globally
     onResponseError({ response }) {
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 403) {
         // Wipe the cookies
         token.value = null;
         user.value = null;

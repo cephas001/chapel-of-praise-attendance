@@ -14,7 +14,7 @@
     >
       <header class="mb-10 pt-10 text-center md:text-left">
         <h1
-          class="font-poppins font-black text-xl md:text-3xl text-black tracking-wide md:tracking-tight leading-none mb-3 uppercase"
+          class="font-poppins text-xl md:text-3xl text-black tracking-wide md:tracking-tight leading-none mb-3 uppercase font-bold"
         >
           Login to COPAMS
         </h1>
@@ -59,14 +59,31 @@
             >
               <Icon name="material-symbols:lock" class="text-lg" />
             </div>
+
             <input
               id="password"
               v-model="password"
-              type="password"
+              :type="showPassword ? 'text' : 'password'"
               placeholder="••••••••"
               required
-              class="w-full border-black border rounded-md py-3 pl-11 pr-4 text-black font-poppins transition-all duration-200 placeholder:text-gray-400 outline-none"
+              class="w-full border-black border rounded-md py-3 pl-11 pr-12 text-black font-poppins transition-all duration-200 placeholder:text-gray-400 outline-none"
             />
+
+            <button
+              type="button"
+              @click="showPassword = !showPassword"
+              class="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-black focus:text-black transition-colors outline-none"
+              :title="showPassword ? 'Hide password' : 'Show password'"
+            >
+              <Icon
+                :name="
+                  showPassword
+                    ? 'material-symbols:visibility-off'
+                    : 'material-symbols:visibility'
+                "
+                class="text-lg"
+              />
+            </button>
           </div>
         </div>
 
@@ -127,6 +144,7 @@ import { useAuth } from "~/composables/useAuth";
 const router = useRouter();
 const { login } = useAuth();
 
+const showPassword = ref(false);
 const username = ref("");
 const password = ref("");
 const errorMessage = ref("");

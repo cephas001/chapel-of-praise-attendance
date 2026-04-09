@@ -13,16 +13,5 @@ export const useApiFetch = (request, opts) => {
       ...(token.value ? { Authorization: `Bearer ${token.value}` } : {}),
       ...opts?.headers,
     },
-    // NEW: Automatically catch Auth errors globally
-    onResponseError({ response }) {
-      if (response.status === 403) {
-        // Wipe the cookies
-        token.value = null;
-        user.value = null;
-        // Kick them out
-        alert("Session expired. Please log in again.");
-        navigateTo("/login");
-      }
-    },
   });
 };

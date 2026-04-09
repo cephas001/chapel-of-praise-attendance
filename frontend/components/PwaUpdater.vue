@@ -1,7 +1,7 @@
 <template>
   <div
     v-if="$pwa?.needRefresh"
-    class="fixed bottom-6 right-6 z-[100] animate-fade-in"
+    class="fixed bottom-6 inset-x-0 mx-auto z-[100] animate-fade-in w-[calc(100%-3rem)] max-w-sm"
   >
     <div
       class="bg-black text-white px-6 py-4 rounded-2xl shadow-2xl flex flex-col gap-3 border border-gray-800 min-w-[300px]"

@@ -80,6 +80,7 @@ const isCameraActive = ref(false);
 const hasTorch = ref(false);
 const isTorchOn = ref(false);
 let html5QrCode = null;
+let activeVideoTrack = null; // NEW: Keep track of the actual hardware stream
 
 const startCamera = async () => {
   isCameraActive.value = true;
@@ -101,20 +102,33 @@ const startCamera = async () => {
       config,
       async (decodedText) => {
         if (html5QrCode.isScanning) {
-          await stopCamera(); // This naturally turns off the flashlight too!
+          await stopCamera();
           emit("scanned", decodedText);
         }
       },
-      (err) => {}, // ignore random stream errors
+      (err) => {},
     )
     .then(() => {
-      // NEW: Once the camera successfully starts, check if the phone has a flashlight
-      try {
-        const capabilities = html5QrCode.getRunningTrackCameraCapabilities();
-        hasTorch.value = !!capabilities.torch;
-      } catch (e) {
-        hasTorch.value = false;
-      }
+      // NEW: Direct Hardware Polling
+      setTimeout(() => {
+        try {
+          // Find the actual video element the library just created
+          const videoElement = document.querySelector("#reader video");
+          if (videoElement && videoElement.srcObject) {
+            // Get the raw video track from the browser
+            const track = videoElement.srcObject.getVideoTracks()[0];
+            if (track) {
+              activeVideoTrack = track;
+              // Ask the browser directly if this specific track supports the 'torch' constraint
+              const capabilities = track.getCapabilities();
+              hasTorch.value = !!capabilities.torch;
+            }
+          }
+        } catch (e) {
+          console.log("Torch detection failed:", e);
+          hasTorch.value = false;
+        }
+      }, 500); // Give the video element a half-second to fully mount
     })
     .catch((err) => {
       console.log("Camera not detected/permitted");
@@ -126,18 +140,21 @@ const startCamera = async () => {
     });
 };
 
-// NEW: The Flashlight Toggle Logic
 const toggleTorch = async () => {
+  if (!activeVideoTrack) return;
+
   try {
     const newState = !isTorchOn.value;
-    await html5QrCode.applyVideoConstraints({
+    // Apply the constraint directly to the browser's video track
+    await activeVideoTrack.applyConstraints({
       advanced: [{ torch: newState }],
     });
     isTorchOn.value = newState;
   } catch (error) {
     console.error("Failed to toggle flashlight:", error);
-    // Safari sometimes rejects the constraint if battery is critically low
-    alert("Your device or browser blocked the flashlight request.");
+    alert(
+      "Your device blocked the flashlight request. Ensure your phone battery isn't too low.",
+    );
   }
 };
 
@@ -145,10 +162,10 @@ const stopCamera = async () => {
   if (html5QrCode && html5QrCode.isScanning) {
     await html5QrCode.stop();
   }
-  // Reset all states
   isCameraActive.value = false;
   isTorchOn.value = false;
   hasTorch.value = false;
+  activeVideoTrack = null;
   emit("cameraStateChanged", false);
 };
 

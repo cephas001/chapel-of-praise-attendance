@@ -19,7 +19,6 @@
             @click="loadActiveEvents"
             :disabled="isLoadingEvents"
             class="p-2 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center justify-center"
-            title="Refresh Events"
           >
             <Icon
               name="material-symbols:refresh"
@@ -27,7 +26,6 @@
               :class="{ 'animate-spin': isLoadingEvents }"
             />
           </button>
-
           <span
             class="px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest flex items-center gap-2 shadow-sm border"
             :class="
@@ -52,22 +50,14 @@
           <div
             class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
           >
-            <div class="flex justify-between items-center mb-6">
-              <h3
-                class="text-sm font-bold uppercase tracking-widest font-montserrat text-black"
-              >
-                Select Event
-              </h3>
-              <Icon
-                v-if="isLoadingEvents"
-                name="material-symbols:sync"
-                class="animate-spin text-gray-400"
-              />
-            </div>
-
+            <h3
+              class="text-sm font-bold uppercase tracking-widest font-montserrat text-black mb-6"
+            >
+              Select Event
+            </h3>
             <div
               v-if="activeEvents.length === 0"
-              class="text-sm font-medium text-gray-400 text-center py-6 bg-gray-50 border border-dashed border-gray-200 rounded-xl"
+              class="text-sm text-gray-400 text-center py-6 bg-gray-50 border border-dashed rounded-xl"
             >
               {{
                 isLoadingEvents
@@ -75,23 +65,20 @@
                   : "No active events found."
               }}
             </div>
-
             <div v-else class="space-y-2">
               <button
                 v-for="event in activeEvents"
                 :key="event.id"
                 @click="selectEvent(event.id)"
-                class="w-full group flex items-center justify-between p-4 rounded-xl transition-all duration-200 text-left"
+                class="w-full flex justify-between p-4 rounded-xl text-left border hover:bg-gray-50"
                 :class="
                   selectedEventId === event.id
-                    ? 'bg-gray-50 border border-black shadow-sm'
-                    : 'bg-white border border-transparent hover:border-gray-200 hover:bg-gray-50'
+                    ? 'bg-gray-50 border-black shadow-sm'
+                    : 'border-transparent'
                 "
               >
                 <div class="flex flex-col">
-                  <span class="text-sm tracking-wide text-black">{{
-                    event.name
-                  }}</span>
+                  <span class="text-sm text-black">{{ event.name }}</span>
                   <span class="text-xs text-gray-500 mt-0.5">{{
                     new Date(event.date).toLocaleDateString()
                   }}</span>
@@ -102,11 +89,11 @@
                       ? 'material-symbols:check-circle'
                       : 'material-symbols:arrow-forward'
                   "
-                  class="text-2xl transition-colors"
+                  class="text-2xl"
                   :class="
                     selectedEventId === event.id
                       ? 'text-black'
-                      : 'text-gray-300 group-hover:text-gray-400'
+                      : 'text-gray-300'
                   "
                 />
               </button>
@@ -138,7 +125,7 @@
                   {{ unsyncedQueue.length }}
                 </p>
                 <p
-                  class="text-[10px] font-bold text-gray-500 uppercase tracking-wide mt-1 font-poppins"
+                  class="text-[10px] font-bold text-gray-500 uppercase tracking-wide mt-1"
                 >
                   Pending
                 </p>
@@ -148,7 +135,7 @@
                   {{ syncErrors.length }}
                 </p>
                 <p
-                  class="text-[10px] font-bold text-gray-500 uppercase tracking-wide mt-1 font-poppins"
+                  class="text-[10px] font-bold text-gray-500 uppercase tracking-wide mt-1"
                 >
                   Rejections
                 </p>
@@ -170,16 +157,15 @@
             <h2 class="text-xl font-black text-black font-montserrat mb-2">
               Awaiting Event Selection
             </h2>
-            <p class="text-sm text-gray-500 font-medium max-w-xs">
-              Please select an active event from the list on the left to
-              initialize the scanning interface.
+            <p class="text-sm text-gray-500 max-w-xs">
+              Please select an active event to initialize the scanner.
             </p>
           </div>
 
           <template v-else>
             <div
               v-if="eventStatus === 'SYNCING_PHASE'"
-              class="w-full bg-orange-50 border border-orange-200 rounded-2xl p-10 text-center shadow-sm flex flex-col items-center"
+              class="bg-orange-50 border border-orange-200 rounded-2xl p-10 text-center shadow-sm flex flex-col items-center"
             >
               <div class="bg-orange-100 text-orange-700 p-4 rounded-full mb-6">
                 <Icon
@@ -197,11 +183,9 @@
               >
                 Syncing in Progress
               </h3>
-              <p
-                class="text-sm text-orange-700 font-medium leading-relaxed max-w-md"
-              >
-                The system is synchronizing all devices to enforce attendance
-                rules. Scanning is temporarily disabled.
+              <p class="text-sm text-orange-700 max-w-md">
+                The system is synchronizing all devices. Scanning is temporarily
+                disabled.
               </p>
             </div>
 
@@ -210,60 +194,13 @@
                 eventStatus === 'SIGN_IN_ACTIVE' ||
                 eventStatus === 'SIGN_OUT_ACTIVE'
               "
-              class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100"
+              class="bg-white rounded-2xl shadow-sm border border-gray-100"
             >
-              <div
-                v-if="!isCameraActive"
-                class="p-8 sm:p-12 flex flex-col items-center justify-center text-center bg-gray-50 border-b border-gray-100 min-h-[300px]"
-              >
-                <button
-                  @click="startCamera"
-                  class="w-20 h-20 bg-black text-white rounded-full flex items-center justify-center mb-6 shadow-xl hover:scale-105 transition-all duration-200 border-4 border-gray-200 hover:border-gray-300"
-                >
-                  <Icon
-                    name="material-symbols:qr-code-scanner"
-                    class="text-4xl"
-                  />
-                </button>
-                <h3 class="text-lg font-black text-black font-montserrat mb-2">
-                  Camera Paused
-                </h3>
-                <p class="text-sm text-gray-500 font-medium max-w-xs">
-                  Tap the button to activate the scanner. Keeping the camera
-                  paused saves your device's battery and CPU.
-                </p>
-              </div>
-
-              <div v-else class="relative bg-black border-b border-gray-100">
-                <div class="absolute top-4 left-4 z-10">
-                  <div
-                    class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-full flex items-center gap-2 border border-white/10"
-                  >
-                    <span
-                      class="w-2 h-2 rounded-full bg-red-500 animate-pulse"
-                    ></span>
-                    <span
-                      class="text-[10px] font-bold text-white uppercase tracking-widest"
-                      >Live Feed</span
-                    >
-                  </div>
-                </div>
-
-                <div
-                  id="reader"
-                  class="w-full min-h-[300px] sm:min-h-[400px]"
-                ></div>
-
-                <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
-                  <button
-                    @click="stopCamera"
-                    class="px-6 py-2.5 bg-red-600/90 backdrop-blur-md text-white text-xs font-bold uppercase tracking-widest rounded-full shadow-lg border border-red-500 hover:bg-red-700 transition-colors flex items-center gap-2"
-                  >
-                    <Icon name="material-symbols:stop-circle" class="text-lg" />
-                    Stop Scanner
-                  </button>
-                </div>
-              </div>
+              <ScannerCamera
+                :forceStop="forceKillCamera"
+                @scanned="handleScan"
+                @cameraStateChanged="isCameraActive = $event"
+              />
 
               <div class="p-6 sm:p-8">
                 <div
@@ -273,7 +210,7 @@
                     <h2 class="text-xl font-bold text-black font-montserrat">
                       {{ selectedEventName }}
                     </h2>
-                    <p class="text-sm text-gray-500 font-medium mt-1">
+                    <p class="text-sm text-gray-500 mt-1">
                       Phase:
                       <span class="font-bold text-black">{{
                         eventStatus.replace("_ACTIVE", "").replace("_", " ")
@@ -294,6 +231,52 @@
                     {{ isCameraActive ? "Scanning..." : "Standing By" }}
                   </div>
                 </div>
+
+                <div
+                  v-if="scannedMatric || scanWarning"
+                  class="mt-6 animate-fade-in"
+                >
+                  <div
+                    class="flex items-center gap-4 p-4 rounded-xl border"
+                    :class="
+                      scanWarning
+                        ? 'bg-red-50 border-red-200 text-red-900'
+                        : 'bg-gray-900 border-black text-white shadow-lg'
+                    "
+                  >
+                    <div
+                      class="flex items-center justify-center w-10 h-10 rounded-full shrink-0"
+                      :class="
+                        scanWarning
+                          ? 'bg-red-100 text-red-600'
+                          : 'bg-gray-800 text-green-400'
+                      "
+                    >
+                      <Icon
+                        :name="
+                          scanWarning
+                            ? 'material-symbols:warning'
+                            : 'material-symbols:check-circle'
+                        "
+                        class="text-xl"
+                      />
+                    </div>
+                    <div class="flex flex-col">
+                      <span
+                        class="text-[10px] font-bold uppercase tracking-widest"
+                        :class="scanWarning ? 'text-red-500' : 'text-gray-400'"
+                        >{{
+                          scanWarning ? "Scan Rejected" : "Scan Successful"
+                        }}</span
+                      >
+                      <span class="text-sm font-bold font-montserrat mt-0.5">{{
+                        scanWarning
+                          ? scanWarning
+                          : `${scannedMatric} has been securely logged.`
+                      }}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -301,7 +284,7 @@
               v-if="eventStatus !== 'SYNCING_PHASE'"
               class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100"
             >
-              <div class="flex items-center gap-3 mb-6 sm:mb-8">
+              <div class="flex items-center gap-3 mb-6">
                 <div
                   class="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200 text-black"
                 >
@@ -313,28 +296,23 @@
                   >
                     Manual Entry
                   </h3>
-                  <p class="text-xs text-gray-500 font-medium">
-                    Record attendance via ID
-                  </p>
                 </div>
               </div>
               <form
-                @submit.prevent="handleManualSubmit"
+                @submit.prevent="submitManual"
                 class="flex flex-col sm:flex-row gap-5"
               >
-                <div class="flex-grow relative">
-                  <input
-                    v-model="manualMatric"
-                    type="text"
-                    placeholder="FT"
-                    class="w-full border-gray-400 focus:border-black border rounded-md py-3 px-4 text-black font-poppins transition-all duration-200 placeholder:text-gray-400 placeholder:text-sm outline-none"
-                    required
-                  />
-                </div>
+                <input
+                  v-model="manualMatric"
+                  type="text"
+                  placeholder="FT"
+                  required
+                  class="flex-grow border-gray-400 focus:border-black border rounded-md py-3 px-4 text-black outline-none transition-all"
+                />
                 <button
                   type="submit"
                   :disabled="isManualSubmitting"
-                  class="h-14 px-8 bg-black text-white font-bold rounded-xl hover:bg-neutral-800 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 uppercase tracking-widest text-xs flex items-center justify-center gap-2 whitespace-nowrap shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="h-14 px-8 bg-black text-white font-bold rounded-xl hover:bg-neutral-800 transition-all uppercase tracking-widest text-xs flex items-center gap-2 disabled:opacity-50"
                 >
                   <Icon
                     v-if="isManualSubmitting"
@@ -349,50 +327,6 @@
         </div>
       </div>
     </main>
-
-    <div
-      v-if="scannedMatric && !scanWarning"
-      class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] animate-bounce"
-    >
-      <div
-        class="bg-black text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 min-w-[320px] border border-gray-800"
-      >
-        <Icon
-          name="material-symbols:check-circle"
-          class="text-green-400 text-2xl"
-        />
-        <div class="flex flex-col">
-          <span
-            class="text-xs font-bold uppercase tracking-widest leading-tight"
-            >Saved Locally</span
-          >
-          <span class="text-sm text-gray-300 font-medium mt-0.5 font-montserrat"
-            >{{ scannedMatric }} has been queued.</span
-          >
-        </div>
-      </div>
-    </div>
-
-    <div
-      v-if="scanWarning"
-      class="fixed bottom-8 left-1/2 -translate-x-1/2 z-[60] animate-bounce"
-    >
-      <div
-        class="bg-red-600 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 min-w-[320px] border border-red-500"
-      >
-        <Icon name="material-symbols:warning" class="text-white text-2xl" />
-        <div class="flex flex-col">
-          <span
-            class="text-xs font-bold uppercase tracking-widest leading-tight"
-            >Notice</span
-          >
-          <span
-            class="text-sm text-white/90 font-medium mt-0.5 font-montserrat"
-            >{{ scanWarning }}</span
-          >
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -403,32 +337,39 @@ import {
   onMounted,
   onBeforeUnmount,
   watch,
-  nextTick,
+  shallowRef,
 } from "vue";
-import { Html5Qrcode } from "html5-qrcode";
-import { db } from "~/utils/db";
 import { useRouter } from "vue-router";
 import { useAuth } from "~/composables/useAuth";
+import { useScanner } from "~/composables/useScanner";
 
 const router = useRouter();
-const { user, token, initAuth } = useAuth();
+const { token, initAuth } = useAuth();
 
-const eventStatus = ref("SIGN_IN_ACTIVE");
-let pollInterval = null;
-const manualMatric = ref("FT");
-const scannedMatric = ref("");
-const scanWarning = ref(null);
-const syncErrors = ref([]);
-const unsyncedQueue = ref([]);
-const isOnline = ref(true);
-const isSyncing = ref(false);
-let html5QrCode = null;
-const activeEvents = ref([]);
+// State
 const selectedEventId = ref(null);
-
+const eventStatus = ref("SIGN_IN_ACTIVE");
+const activeEvents = shallowRef([]);
 const isLoadingEvents = ref(false);
+
+const isCameraActive = ref(false);
+const forceKillCamera = ref(false); // Used to pass a kill signal to ScannerCamera.vue
+
+const manualMatric = ref("FT");
 const isManualSubmitting = ref(false);
-const isCameraActive = ref(false); // NEW STATE FOR CAMERA TOGGLE
+let pollInterval = null;
+
+// Initialize our extracted Composable
+const {
+  isOnline,
+  isSyncing,
+  unsyncedQueue,
+  syncErrors,
+  scannedMatric,
+  scanWarning,
+  handleScan,
+  syncRecords,
+} = useScanner(selectedEventId, eventStatus);
 
 const selectedEventName = computed(() => {
   const event = activeEvents.value.find((e) => e.id === selectedEventId.value);
@@ -450,212 +391,69 @@ const loadActiveEvents = async () => {
   }
 };
 
-const loadQueue = async () => {
-  const records = await db.unsynced_scans.toArray();
-  unsyncedQueue.value = records.reverse();
-};
-
-const syncRecords = async () => {
-  if (isSyncing.value || unsyncedQueue.value.length === 0 || !isOnline.value)
-    return;
-
-  isSyncing.value = true;
-  const recordsToProcess = [...unsyncedQueue.value];
-
-  for (const record of recordsToProcess) {
-    try {
-      await useApiFetch("/attendance/scan", {
-        method: "POST",
-        body: {
-          event_id: selectedEventId.value,
-          usher_id: user.value.id,
-          matric_number: record.matric_number,
-          scan_type: record.scan_type,
-          scanned_at: record.timestamp,
-        },
-      });
-
-      await db.unsynced_scans.delete(record.id);
-    } catch (error) {
-      const status = error.statusCode || error.response?.status;
-
-      if (status === 409 || status === 403) {
-        const errorData = error.data || {};
-        syncErrors.value.unshift({
-          id: Date.now() + Math.random(),
-          matric: record.matric_number,
-          message:
-            errorData.message || errorData.error || "Rejected by server.",
-        });
-
-        if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
-        await db.unsynced_scans.delete(record.id);
-      } else {
-        console.error("Network died during sync loop:", error);
-        break;
-      }
-    }
-  }
-
-  await loadQueue();
-  isSyncing.value = false;
-};
-
-watch(isOnline, (newStatus) => {
-  if (newStatus === true) syncRecords();
-});
-
-const handleScan = async (decodedText) => {
-  scannedMatric.value = null;
-  scanWarning.value = null;
-  const cleanText = decodedText.trim().toUpperCase();
-  const currentScanType =
-    eventStatus.value === "SIGN_OUT_ACTIVE" ? "SIGN_OUT" : "SIGN_IN";
-
-  try {
-    const existingRecord = await db.unsynced_scans
-      .where({ matric_number: cleanText, scan_type: currentScanType })
-      .first();
-
-    if (existingRecord) {
-      scanWarning.value = `Duplicate: ${cleanText} is already in the queue.`;
-      if (navigator.vibrate) navigator.vibrate([100, 100, 100]);
-      return;
-    }
-
-    await db.unsynced_scans.add({
-      matric_number: cleanText,
-      scan_type: currentScanType,
-      timestamp: new Date().toISOString(),
-    });
-
-    scannedMatric.value = cleanText;
-    await loadQueue();
-    if (navigator.vibrate) navigator.vibrate(200);
-    if (isOnline.value) syncRecords();
-  } catch (error) {
-    console.error("Local DB Error:", error);
-  }
-};
-
-const handleManualSubmit = async () => {
+const submitManual = async () => {
   if (manualMatric.value) {
     isManualSubmitting.value = true;
+    forceKillCamera.value = true; // Tell child component to stop camera
     await handleScan(manualMatric.value);
-    manualMatric.value = "FT"; // reset to base
+    manualMatric.value = "FT";
     isManualSubmitting.value = false;
+    setTimeout(() => (forceKillCamera.value = false), 500); // Reset the kill signal
   }
-};
-
-// NEW: Controlled Camera Logic
-const startCamera = async () => {
-  isCameraActive.value = true;
-  await nextTick(); // Wait for the DOM element <div id="reader"> to render
-
-  if (!document.getElementById("reader")) return;
-
-  // Only create the instance once
-  if (!html5QrCode) {
-    html5QrCode = new Html5Qrcode("reader");
-  }
-
-  const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-
-  html5QrCode
-    .start(
-      { facingMode: "environment" },
-      config,
-      (decodedText) => {
-        if (html5QrCode.isScanning) {
-          html5QrCode.pause(true); // Pause feed while processing UI toasts
-          handleScan(decodedText).then(
-            () =>
-              setTimeout(() => {
-                if (html5QrCode && html5QrCode.isScanning) html5QrCode.resume();
-              }, 1500), // Auto-resume after 1.5 seconds so they can scan the next person
-          );
-        }
-      },
-      (err) => {},
-    )
-    .catch((err) => {
-      console.log("Camera not detected/permitted");
-      isCameraActive.value = false;
-      alert(
-        "Unable to access the camera. Please check your browser permissions.",
-      );
-    });
-};
-
-const stopCamera = async () => {
-  if (html5QrCode && html5QrCode.isScanning) {
-    await html5QrCode.stop();
-  }
-  isCameraActive.value = false;
 };
 
 const checkEventStatus = async () => {
   if (!isOnline.value || !selectedEventId.value) return;
   try {
     const data = await useApiFetch(`/events/${selectedEventId.value}/status`);
-    // Automatically kill the camera to save battery if admin triggers a Sync Phase
-    if (data.status === "SYNCING_PHASE" && isCameraActive.value) {
-      await stopCamera();
-    }
-    eventStatus.value = data.status;
+    eventStatus.value = data.status; // Watchers handle the rest
   } catch (error) {
     console.error("Failed to check event status:", error);
   }
 };
 
-watch(eventStatus, async (newStatus, oldStatus) => {
-  // We no longer auto-start the camera when phase changes.
-  // We force them to manually click the button to save battery.
-  if (newStatus === "SYNCING_PHASE" && isCameraActive.value) {
-    await stopCamera();
+watch(eventStatus, async (newStatus) => {
+  if (newStatus === "SYNCING_PHASE") {
+    forceKillCamera.value = true;
+    if (isOnline.value) await syncRecords();
+    setTimeout(() => (forceKillCamera.value = false), 500);
   }
 });
 
-const selectEvent = async (eventId) => {
-  // Turn off the camera if they click a different event to reset the flow
-  if (isCameraActive.value) await stopCamera();
-
+const selectEvent = (eventId) => {
+  forceKillCamera.value = true;
   selectedEventId.value = eventId;
-  await nextTick();
   checkEventStatus();
 
-  // Safely manage the polling interval
   if (pollInterval) clearInterval(pollInterval);
   pollInterval = setInterval(checkEventStatus, 10000);
+
+  setTimeout(() => (forceKillCamera.value = false), 500);
 };
 
 onMounted(() => {
   initAuth();
   if (!token.value) return router.push("/login");
-
-  isOnline.value = navigator.onLine;
-  window.addEventListener("online", () => {
-    isOnline.value = true;
-  });
-  window.addEventListener("offline", () => {
-    isOnline.value = false;
-  });
-
-  loadQueue().then(() => {
-    if (isOnline.value) syncRecords();
-  });
-
   loadActiveEvents();
 });
 
-onBeforeUnmount(async () => {
-  if (isCameraActive.value) await stopCamera();
-  window.removeEventListener("online", () => {
-    isOnline.value = true;
-  });
-  window.removeEventListener("offline", () => {
-    isOnline.value = false;
-  });
+onBeforeUnmount(() => {
   if (pollInterval) clearInterval(pollInterval);
 });
 </script>
+
+<style scoped>
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>

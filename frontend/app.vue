@@ -3,8 +3,8 @@
     <VitePwaManifest />
     <NavBar />
     <div :class="token ? 'pt-24' : ''"><NuxtPage /></div>
-    <PwaUpdater />
-    <PwaInstallPrompt />
+    <LazyPwaUpdater />
+    <LazyPwaInstallPrompt />
   </div>
 </template>
 

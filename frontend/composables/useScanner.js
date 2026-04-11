@@ -141,6 +141,23 @@ export const useScanner = (selectedEventId, eventStatus) => {
     if (newStatus === true) syncRecords();
   });
 
+  const clearQueue = async () => {
+    if (
+      !confirm(
+        "⚠️ WARNING: This will permanently delete all unsynced scans from this device. They will NOT be saved to the database. Are you absolutely sure?",
+      )
+    )
+      return;
+
+    try {
+      await db.unsynced_scans.clear();
+      await loadQueue();
+    } catch (error) {
+      console.error("Failed to clear local queue:", error);
+      alert("Failed to clear queue. Please refresh the page.");
+    }
+  };
+
   return {
     isOnline,
     isSyncing,
@@ -150,5 +167,6 @@ export const useScanner = (selectedEventId, eventStatus) => {
     scanWarning,
     handleScan,
     syncRecords,
+    clearQueue,
   };
 };

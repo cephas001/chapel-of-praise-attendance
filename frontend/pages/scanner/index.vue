@@ -234,47 +234,33 @@
 
                 <div
                   v-if="scannedMatric || scanWarning"
-                  class="mt-6 animate-fade-in"
+                  class="mt-5 animate-fade-in flex"
                 >
                   <div
-                    class="flex items-center gap-4 p-4 rounded-xl border"
+                    class="flex items-center gap-2.5 px-4 py-2 rounded-lg border text-xs font-semibold tracking-wide font-poppins"
                     :class="
                       scanWarning
-                        ? 'bg-red-50 border-red-200 text-red-900'
-                        : 'bg-gray-900 border-black text-white shadow-lg'
+                        ? 'bg-red-50 border-red-200 text-red-800'
+                        : 'bg-black border-black text-white shadow-sm'
                     "
                   >
-                    <div
-                      class="flex items-center justify-center w-10 h-10 rounded-full shrink-0"
-                      :class="
+                    <Icon
+                      :name="
                         scanWarning
-                          ? 'bg-red-100 text-red-600'
-                          : 'bg-gray-800 text-green-400'
+                          ? 'material-symbols:error'
+                          : 'material-symbols:check-circle'
                       "
-                    >
-                      <Icon
-                        :name="
-                          scanWarning
-                            ? 'material-symbols:warning'
-                            : 'material-symbols:check-circle'
-                        "
-                        class="text-xl"
-                      />
-                    </div>
-                    <div class="flex flex-col">
+                      class="text-base shrink-0"
+                      :class="scanWarning ? 'text-red-500' : 'text-green-400'"
+                    />
+                    <span class="truncate">
                       <span
-                        class="text-[10px] font-bold uppercase tracking-widest"
-                        :class="scanWarning ? 'text-red-500' : 'text-gray-400'"
-                        >{{
-                          scanWarning ? "Scan Rejected" : "Scan Successful"
-                        }}</span
+                        v-if="!scanWarning"
+                        class="text-gray-400 font-normal mr-1"
+                        >Logged:</span
                       >
-                      <span class="text-sm font-bold font-montserrat mt-0.5">{{
-                        scanWarning
-                          ? scanWarning
-                          : `${scannedMatric} has been securely logged.`
-                      }}</span>
-                    </div>
+                      {{ scanWarning ? scanWarning : scannedMatric }}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -326,6 +312,110 @@
           </template>
         </div>
       </div>
+      <div v-if="unsyncedQueue.length > 0" class="mt-8 animate-fade-in">
+        <section
+          class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
+        >
+          <div
+            class="p-6 sm:p-8 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50/50"
+          >
+            <div>
+              <h2
+                class="text-lg font-black font-poppins flex items-center gap-2 text-black"
+              >
+                <Icon name="material-symbols:database" class="text-xl" />
+                Local Storage Inspector
+              </h2>
+              <p class="text-xs text-gray-500 font-medium mt-1">
+                These records are saved on this device and waiting for a network
+                connection.
+              </p>
+            </div>
+
+            <div class="flex items-center gap-3 w-full md:w-auto">
+              <button
+                @click="clearQueue"
+                class="flex-1 md:flex-none px-4 py-2.5 bg-white border border-red-200 text-red-600 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
+              >
+                <Icon name="material-symbols:delete-sweep" class="text-lg" />
+                Clear Queue
+              </button>
+
+              <button
+                @click="syncRecords"
+                :disabled="isSyncing || !isOnline"
+                class="flex-1 md:flex-none px-4 py-2.5 bg-black text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
+              >
+                <Icon
+                  v-if="isSyncing"
+                  name="material-symbols:sync"
+                  class="text-lg animate-spin"
+                />
+                <Icon
+                  v-else
+                  name="material-symbols:cloud-upload"
+                  class="text-lg"
+                />
+                {{ isSyncing ? "Syncing..." : "Force Sync" }}
+              </button>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr
+                  class="bg-gray-50 border-b border-gray-100 text-[10px] uppercase tracking-widest font-bold text-gray-400 font-poppins"
+                >
+                  <th class="p-4 pl-6 sm:pl-8 font-medium">Matric Number</th>
+                  <th class="p-4 font-medium">Scan Type</th>
+                  <th class="p-4 pr-6 sm:pr-8 font-medium text-right">
+                    Timestamp
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr
+                  v-for="record in unsyncedQueue"
+                  :key="record.id"
+                  class="hover:bg-gray-50/50 transition-colors"
+                >
+                  <td class="p-4 pl-6 sm:pl-8">
+                    <span class="font-black font-montserrat text-black">{{
+                      record.matric_number
+                    }}</span>
+                  </td>
+                  <td class="p-4">
+                    <span
+                      class="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border"
+                      :class="
+                        record.scan_type === 'SIGN_IN'
+                          ? 'bg-green-50 text-green-700 border-green-200'
+                          : 'bg-red-50 text-red-700 border-red-200'
+                      "
+                    >
+                      {{ record.scan_type.replace("_", " ") }}
+                    </span>
+                  </td>
+                  <td class="p-4 pr-6 sm:pr-8 text-right">
+                    <span
+                      class="text-xs text-gray-500 font-medium font-poppins"
+                    >
+                      {{
+                        new Date(record.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          second: "2-digit",
+                        })
+                      }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
     </main>
   </div>
 </template>
@@ -369,6 +459,7 @@ const {
   scanWarning,
   handleScan,
   syncRecords,
+  clearQueue,
 } = useScanner(selectedEventId, eventStatus);
 
 const selectedEventName = computed(() => {

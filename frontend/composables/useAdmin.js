@@ -95,6 +95,20 @@ export const useAdmin = () => {
     }
   };
 
+  const checkUsernameAvailability = async (username) => {
+    if (!username || username.trim() === "") return null;
+
+    try {
+      const data = await useApiFetch(
+        `/users/check?username=${encodeURIComponent(username)}`,
+      );
+      return data.available; // Returns true or false
+    } catch (error) {
+      console.error("Error checking username", error);
+      return null;
+    }
+  };
+
   return {
     allEvents,
     isLoadingEvents,
@@ -103,5 +117,6 @@ export const useAdmin = () => {
     createUser,
     deleteEvent,
     updateEventStatus,
+    checkUsernameAvailability,
   };
 };

@@ -413,6 +413,141 @@ app.get(
   },
 );
 
+// ==========================================
+// GET PAGINATED, SEARCHABLE, SORTABLE USERS
+// ==========================================
+app.get(
+  "/api/users",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const skip = (page - 1) * limit;
+
+      const search = req.query.search || "";
+      const sort = req.query.sort || "desc"; // Default to newest first
+
+      // Build the query object dynamically
+      const whereClause = search
+        ? {
+            OR: [
+              { username: { contains: search, mode: "insensitive" } },
+              { first_name: { contains: search, mode: "insensitive" } },
+              { last_name: { contains: search, mode: "insensitive" } },
+            ],
+          }
+        : {};
+
+      // Build the sort object dynamically
+      let orderByClause;
+      if (sort === "asc") orderByClause = { username: "asc" };
+      else if (sort === "desc_alpha") orderByClause = { username: "desc" };
+      else orderByClause = { created_at: "desc" }; // 'desc' default
+
+      const [users, total] = await Promise.all([
+        prisma.user.findMany({
+          where: whereClause,
+          skip,
+          take: limit,
+          select: {
+            id: true,
+            username: true,
+            first_name: true,
+            last_name: true,
+            role: true,
+            created_at: true,
+          },
+          orderBy: orderByClause,
+        }),
+        prisma.user.count({ where: whereClause }),
+      ]);
+
+      res.json({
+        users,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  },
+);
+
+// ==========================================
+// UPDATE USER ROLE / DETAILS
+// ==========================================
+app.patch(
+  "/api/users/:id",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      // Only allow updating specific fields
+      const { role, first_name, last_name } = req.body;
+
+      // Prevent updating the super admin if you want that protection
+      if (req.user.id === req.params.id && role && role !== "SUPER_ADMIN") {
+        return res.status(403).json({ error: "You cannot demote yourself." });
+      }
+
+      const updatedUser = await prisma.user.update({
+        where: { id: req.params.id },
+        data: {
+          ...(role && { role }),
+          ...(first_name !== undefined && { first_name }),
+          ...(last_name !== undefined && { last_name }),
+        },
+        select: {
+          id: true,
+          username: true,
+          first_name: true,
+          last_name: true,
+          role: true,
+        },
+      });
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ error: "Failed to update user" });
+    }
+  },
+);
+
+// ==========================================
+// DELETE USER
+// ==========================================
+app.delete(
+  "/api/users/:id",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      if (req.user.id === req.params.id) {
+        return res
+          .status(403)
+          .json({ error: "You cannot delete your own account." });
+      }
+
+      await prisma.user.delete({
+        where: { id: req.params.id },
+      });
+
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ error: "Failed to delete user" });
+    }
+  },
+);
+
 // Start the server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

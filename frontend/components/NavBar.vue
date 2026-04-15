@@ -107,7 +107,7 @@
 
     <aside
       v-if="token"
-      class="fixed top-0 right-0 z-[60] h-screen w-[280px] bg-white shadow-2xl flex flex-col md:hidden transition-transform duration-300 ease-in-out transform"
+      class="fixed top-0 right-0 z-[60] h-full w-[280px] bg-white shadow-2xl flex flex-col md:hidden transition-transform duration-300 ease-in-out transform"
       :class="isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'"
     >
       <div

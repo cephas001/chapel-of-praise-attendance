@@ -30,14 +30,7 @@
       </header>
 
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        <div class="lg:col-span-5">
-          <AdminForms
-            @eventCreated="handleEventCreation"
-            @userCreated="handleUserCreation"
-          />
-        </div>
-
-        <div class="lg:col-span-7 flex flex-col gap-8">
+        <div class="lg:col-span-7 flex flex-col gap-8 order-1">
           <section
             class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col max-h-[600px]"
           >
@@ -150,14 +143,23 @@
               </div>
             </div>
           </section>
+
+          <AdminEventControls
+            :event="selectedEvent"
+            @statusUpdated="handleStatusUpdate"
+            @eventDeleted="handleEventDelete"
+          />
+        </div>
+
+        <div class="lg:col-span-5 flex flex-col gap-6 order-2">
+          <AdminForms
+            @eventCreated="handleEventCreation"
+            @userCreated="handleUserCreation"
+          />
+
+          <AdminViews />
         </div>
       </div>
-
-      <AdminEventControls
-        :event="selectedEvent"
-        @statusUpdated="handleStatusUpdate"
-        @eventDeleted="handleEventDelete"
-      />
     </main>
   </div>
 </template>

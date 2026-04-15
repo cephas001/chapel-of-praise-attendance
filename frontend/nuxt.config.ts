@@ -11,6 +11,8 @@ export default defineNuxtConfig({
     preference: "light",
   },
 
+  ssr: false,
+
   pwa: {
     registerType: "prompt", // We use prompt so we can show an "Update" button when you push new code
     manifest: {

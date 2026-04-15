@@ -155,7 +155,7 @@ const handleLogin = async () => {
   errorMessage.value = "";
 
   try {
-    await login(username.value, password.value);
+    await login(username.value.trim(), password.value.trim());
     // If successful, push them to the scanner page!
     router.push("/");
   } catch (error) {

@@ -446,7 +446,7 @@ const bulkNamesList = ref("");
 const bulkResults = ref({ total: 0, success: 0, skipped: 0 });
 
 const handleUsernameInput = () => {
-  newUser.value.username = newUser.value.username.toLowerCase();
+  newUser.value.username = newUser.value.username.toLowerCase().trim();
   usernameStatus.value = "idle";
   clearTimeout(typingTimer);
 
@@ -507,7 +507,7 @@ const handleBulkCreate = async () => {
     if (isAvailable) {
       const payload = {
         username: safeUsername,
-        first_name: name,
+        first_name: name.trim(),
         password: `admin${safeUsername}`,
         role: "USHER",
       };

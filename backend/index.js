@@ -97,7 +97,7 @@ app.post(
   authenticateToken,
   requireSuperAdmin,
   async (req, res) => {
-    const { username, password, role } = req.body;
+    const { username, password, role, first_name, last_name } = req.body;
 
     try {
       const existingUser = await prisma.user.findUnique({
@@ -111,9 +111,11 @@ app.post(
 
       const newUser = await prisma.user.create({
         data: {
-          username: username,
+          username: username.toLowerCase(), // Enforce lowercase at DB level too
           password_hash: hashedPassword,
           role: role || "USHER",
+          first_name: first_name || null, // NEW
+          last_name: last_name || null, // NEW
         },
       });
 
@@ -123,6 +125,8 @@ app.post(
           id: newUser.id,
           username: newUser.username,
           role: newUser.role,
+          first_name: newUser.first_name,
+          last_name: newUser.last_name,
         },
       });
     } catch (error) {
@@ -377,6 +381,34 @@ app.get(
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Failed to generate report" });
+    }
+  },
+);
+
+// ==========================================
+// CHECK USERNAME AVAILABILITY (SUPER ADMIN ONLY)
+// ==========================================
+app.get(
+  "/api/users/check",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req, res) => {
+    const { username } = req.query;
+
+    if (!username) {
+      return res.json({ available: false });
+    }
+
+    try {
+      const existingUser = await prisma.user.findUnique({
+        where: { username },
+      });
+
+      // If existingUser is null, it's available (true). If an object exists, it's taken (false).
+      res.json({ available: !existingUser });
+    } catch (error) {
+      console.error("Error checking username:", error);
+      res.status(500).json({ error: "Failed to check username" });
     }
   },
 );

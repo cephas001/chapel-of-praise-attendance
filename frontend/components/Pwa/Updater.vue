@@ -39,6 +39,10 @@
   </div>
 </template>
 
+<script setup>
+const { $pwa } = useNuxtApp();
+</script>
+
 <style scoped>
 .animate-fade-in {
   animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;

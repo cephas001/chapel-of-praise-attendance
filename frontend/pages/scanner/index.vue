@@ -432,9 +432,11 @@ import {
 import { useRouter } from "vue-router";
 import { useAuth } from "~/composables/useAuth";
 import { useScanner } from "~/composables/useScanner";
+import { useToast } from "~/composables/useToast";
 
 const router = useRouter();
 const { token, initAuth } = useAuth();
+const toast = useToast();
 
 // State
 const selectedEventId = ref(null);
@@ -476,7 +478,7 @@ const loadActiveEvents = async () => {
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
   } catch (error) {
-    console.error("Failed to load events", error);
+    toast.error("Failed to load events", error);
   } finally {
     isLoadingEvents.value = false;
   }
@@ -499,7 +501,7 @@ const checkEventStatus = async () => {
     const data = await useApiFetch(`/events/${selectedEventId.value}/status`);
     eventStatus.value = data.status; // Watchers handle the rest
   } catch (error) {
-    console.error("Failed to check event status:", error);
+    toast.error("Failed to check event status:", error);
   }
 };
 

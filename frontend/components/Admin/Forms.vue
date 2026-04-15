@@ -411,9 +411,11 @@
 <script setup>
 import { ref } from "vue";
 import { useAdmin } from "~/composables/useAdmin";
+import { useToast } from "~/composables/useToast";
 
 const { checkUsernameAvailability } = useAdmin();
 const emit = defineEmits(["eventCreated", "userCreated"]);
+const toast = useToast();
 
 // NEW: UI State for the Accordions. False = Collapsed by default.
 const isEventFormOpen = ref(false);
@@ -521,7 +523,7 @@ const handleBulkCreate = async () => {
     }
   }
 
-  alert(
+  toast.success(
     `Bulk Import Complete!\nCreated: ${bulkResults.value.success}\nSkipped (Already Taken): ${bulkResults.value.skipped}`,
   );
   bulkNamesList.value = "";

@@ -5,6 +5,7 @@
     <div :class="token ? 'pt-24' : ''"><NuxtPage /></div>
     <LazyPwaUpdater />
     <LazyPwaInstallPrompt />
+    <ToastContainer />
   </div>
 </template>
 

@@ -69,7 +69,9 @@
 
 <script setup>
 import { ref, onBeforeUnmount, nextTick, watch } from "vue";
+import { useToast } from "~/composables/useToast";
 
+const toast = useToast();
 const props = defineProps({
   forceStop: Boolean,
 });
@@ -134,7 +136,7 @@ const startCamera = async () => {
       console.log("Camera not detected/permitted");
       isCameraActive.value = false;
       emit("cameraStateChanged", false);
-      alert(
+      toast.error(
         "Unable to access the camera. Please check your browser permissions.",
       );
     });
@@ -152,7 +154,7 @@ const toggleTorch = async () => {
     isTorchOn.value = newState;
   } catch (error) {
     console.error("Failed to toggle flashlight:", error);
-    alert(
+    toast.error(
       "Your device blocked the flashlight request. Ensure your phone battery isn't too low.",
     );
   }

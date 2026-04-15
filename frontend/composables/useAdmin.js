@@ -1,9 +1,11 @@
 // frontend/composables/useAdmin.js
 import { ref } from "vue";
 import { useAuth } from "~/composables/useAuth";
+import { useToast } from "~/composables/useToast";
 
 export const useAdmin = () => {
   const { user } = useAuth();
+  const toast = useToast();
 
   const allEvents = ref([]);
   const isLoadingEvents = ref(false);
@@ -13,7 +15,7 @@ export const useAdmin = () => {
     try {
       allEvents.value = await useApiFetch("/events");
     } catch (error) {
-      console.error("Error fetching events", error);
+      toast.error("Failed to fetch events");
     } finally {
       isLoadingEvents.value = false;
     }
@@ -28,12 +30,11 @@ export const useAdmin = () => {
           created_by_id: user.value.id,
         },
       });
-      alert("Event created successfully!");
+      toast.success("Event created successfully!");
       await loadAllEvents();
       return data.event; // Return the new event so the UI can select it
     } catch (error) {
-      console.error("Error creating event", error);
-      alert(error.data?.error || "Failed to create event");
+      toast.error(error.data?.error || "Failed to create event");
       return null;
     }
   };
@@ -44,11 +45,10 @@ export const useAdmin = () => {
         method: "POST",
         body: userData,
       });
-      alert("User registered successfully!");
+      toast.success("User registered successfully!");
       return true;
     } catch (error) {
-      console.error("Error creating user", error);
-      alert(`Failed: ${error.data?.message || "Could not create user"}`);
+      toast.error(`Failed: ${error.data?.message || "Could not create user"}`);
       return false;
     }
   };
@@ -63,12 +63,11 @@ export const useAdmin = () => {
 
     try {
       await useApiFetch(`/events/${id}`, { method: "DELETE" });
-      alert("Event deleted successfully!");
+      toast.success("Event deleted successfully!");
       await loadAllEvents();
       return true;
     } catch (error) {
-      console.error("Error deleting event", error);
-      alert(error.data?.message || "Failed to delete event.");
+      toast.error(error.data?.message || "Failed to delete event.");
       return false;
     }
   };
@@ -89,8 +88,7 @@ export const useAdmin = () => {
       }
       return true;
     } catch (error) {
-      console.error("Error updating status", error);
-      alert(error.data?.error || "Failed to update status");
+      toast.error(error.data?.error || "Failed to update status");
       return false;
     }
   };
@@ -104,7 +102,7 @@ export const useAdmin = () => {
       );
       return data.available; // Returns true or false
     } catch (error) {
-      console.error("Error checking username", error);
+      toast.error("Failed to check username availability");
       return null;
     }
   };

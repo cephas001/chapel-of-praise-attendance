@@ -2,9 +2,11 @@
 import { ref, onMounted, onBeforeUnmount, watch } from "vue";
 import { db } from "~/utils/db";
 import { useAuth } from "~/composables/useAuth";
+import { useToast } from "~/composables/useToast";
 
 export const useScanner = (selectedEventId, eventStatus) => {
   const { user, token } = useAuth();
+  const toast = useToast();
 
   const isOnline = ref(true);
   const isSyncing = ref(false);
@@ -70,7 +72,7 @@ export const useScanner = (selectedEventId, eventStatus) => {
           if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
           await db.unsynced_scans.delete(record.id);
         } else {
-          console.error("Network died during sync loop:", error);
+          toast.error("Network died during sync loop:", error);
           break;
         }
       }
@@ -114,7 +116,7 @@ export const useScanner = (selectedEventId, eventStatus) => {
       if (isOnline.value) syncRecords();
       clearLogAfterDelay();
     } catch (error) {
-      console.error("Local DB Error:", error);
+      toast.error("Local DB Error:", error);
     }
   };
 
@@ -153,8 +155,7 @@ export const useScanner = (selectedEventId, eventStatus) => {
       await db.unsynced_scans.clear();
       await loadQueue();
     } catch (error) {
-      console.error("Failed to clear local queue:", error);
-      alert("Failed to clear queue. Please refresh the page.");
+      toast.error("Failed to clear queue. Please refresh the page.");
     }
   };
 

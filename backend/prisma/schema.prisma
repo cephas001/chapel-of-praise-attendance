@@ -42,6 +42,7 @@ model User {
   // Relations
   events_created    Event[]            @relation("EventCreator")
   scans_recorded    AttendanceRecord[] @relation("ScanUsher")
+  unlocked_events   EventAccess[]
 }
 
 model Student {
@@ -63,12 +64,14 @@ model Event {
   status      EventStatus @default(UPCOMING)
   is_archived Boolean     @default(false)
   created_at  DateTime    @default(now())
+  unlock_pin  String      @unique @default(cuid())
   
   created_by_id String
   created_by    User        @relation("EventCreator", fields: [created_by_id], references: [id])
 
   // Relations
   records     AttendanceRecord[]
+  unlocked_bg EventAccess[]
 }
 
 model AttendanceRecord {
@@ -90,4 +93,16 @@ model AttendanceRecord {
   // DELIVERABLE 2: The database-level constraint preventing double scans.
   // A student can only have ONE sign_in and ONE sign_out per event.
   @@unique([event_id, matric_number, scan_type])
+}
+
+model EventAccess {
+  id          String   @id @default(uuid())
+  user_id     String
+  event_id    String
+  unlocked_at DateTime @default(now())
+
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  event       Event    @relation(fields: [event_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, event_id]) // An usher only needs to unlock an event once
 }

@@ -6,6 +6,7 @@
     <LazyPwaUpdater />
     <LazyPwaInstallPrompt />
     <ToastContainer />
+    <ConfirmModal />
   </div>
 </template>
 

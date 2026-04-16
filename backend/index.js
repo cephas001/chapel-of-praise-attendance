@@ -188,12 +188,16 @@ app.post(
     const { name, date, created_by_id } = req.body;
 
     try {
+      const generatePin = () =>
+        Math.random().toString(36).substring(2, 8).toUpperCase();
+
       const newEvent = await prisma.event.create({
         data: {
           name: name,
           date: new Date(date),
           status: "UPCOMING",
           created_by_id: created_by_id,
+          unlock_pin: generatePin(),
         },
       });
       res.status(201).json({ message: "Event created", event: newEvent });
@@ -547,6 +551,57 @@ app.delete(
     }
   },
 );
+
+// ==========================================
+// UNLOCK EVENT FOR USHER
+// ==========================================
+app.post("/api/events/:id/unlock", authenticateToken, async (req, res) => {
+  try {
+    const { pin } = req.body;
+    const eventId = req.params.id;
+    const userId = req.user.id;
+
+    // Verify the event and PIN
+    const event = await prisma.event.findUnique({ where: { id: eventId } });
+
+    if (!event || event.unlock_pin !== pin.trim().toUpperCase()) {
+      return res.status(403).json({ error: "Invalid Access PIN or QR Code." });
+    }
+
+    // Grant access
+    await prisma.eventAccess.upsert({
+      where: { user_id_event_id: { user_id: userId, event_id: eventId } },
+      update: {}, // Do nothing if it already exists
+      create: { user_id: userId, event_id: eventId },
+    });
+
+    res.json({ message: "Event unlocked successfully!" });
+  } catch (error) {
+    console.error("Error unlocking event:", error);
+    res.status(500).json({ error: "Failed to unlock event." });
+  }
+});
+
+// ==========================================
+// CHECK IF EVENT IS UNLOCKED
+// ==========================================
+app.get("/api/events/:id/check-access", authenticateToken, async (req, res) => {
+  try {
+    const access = await prisma.eventAccess.findUnique({
+      where: {
+        user_id_event_id: { user_id: req.user.id, event_id: req.params.id },
+      },
+    });
+
+    // Super Admins automatically bypass the lock, Ushers require the access record
+    if (req.user.role === "SUPER_ADMIN" || access) {
+      return res.json({ unlocked: true });
+    }
+    res.json({ unlocked: false });
+  } catch (error) {
+    res.status(500).json({ error: "Access check failed." });
+  }
+});
 
 // Start the server
 const PORT = process.env.PORT || 5000;

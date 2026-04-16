@@ -2,10 +2,12 @@
 import { ref } from "vue";
 import { useAuth } from "~/composables/useAuth";
 import { useToast } from "~/composables/useToast";
+import { useConfirm } from "~/composables/useConfirm";
 
 export const useAdmin = () => {
   const { user } = useAuth();
   const toast = useToast();
+  const confirm = useConfirm();
 
   const allEvents = ref([]);
   const isLoadingEvents = ref(false);
@@ -54,12 +56,15 @@ export const useAdmin = () => {
   };
 
   const deleteEvent = async (id) => {
-    if (
-      !confirm(
+    const isConfirmed = await confirm.ask({
+      title: "Delete Event?",
+      message:
         "Are you ABSOLUTELY sure you want to delete this event? This action cannot be undone.",
-      )
-    )
-      return false;
+      confirmText: "Delete",
+      isDestructive: true,
+    });
+
+    if (!isConfirmed) return false;
 
     try {
       await useApiFetch(`/events/${id}`, { method: "DELETE" });
@@ -73,7 +78,14 @@ export const useAdmin = () => {
   };
 
   const updateEventStatus = async (event, newStatus) => {
-    if (!confirm(`Change ${event.name} phase to ${newStatus}?`)) return false;
+    const isConfirmed = await confirm.ask({
+      title: "Change Phase?",
+      message: `Change ${event.name} phase to ${newStatus.replace("_ACTIVE", "").replace("_", " ")}?`,
+      confirmText: "Update Phase",
+      isDestructive: false, // Will make the button blue instead of red
+    });
+
+    if (!isConfirmed) return false;
 
     try {
       await useApiFetch(`/events/${event.id}/status`, {

@@ -70,7 +70,7 @@
                 v-for="event in activeEvents"
                 :key="event.id"
                 @click="selectEvent(event.id)"
-                class="w-full flex justify-between p-4 rounded-xl text-left border hover:bg-gray-50"
+                class="w-full justify-between p-4 rounded-xl text-left border hover:bg-gray-50 flex items-center"
                 :class="
                   selectedEventId === event.id
                     ? 'bg-gray-50 border-black shadow-sm'
@@ -190,125 +190,182 @@
             </div>
 
             <div
-              v-else-if="
-                eventStatus === 'SIGN_IN_ACTIVE' ||
-                eventStatus === 'SIGN_OUT_ACTIVE'
-              "
-              class="bg-white rounded-2xl shadow-sm border border-gray-100"
+              v-else-if="!isUnlocked"
+              class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
             >
+              <div
+                class="bg-gray-900 text-white p-8 sm:p-12 text-center border-b border-gray-800"
+              >
+                <div
+                  class="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner text-gray-400"
+                >
+                  <Icon name="material-symbols:lock" class="text-3xl" />
+                </div>
+                <h2 class="text-2xl font-black font-montserrat mb-2">
+                  Venue Lock Active
+                </h2>
+                <p class="text-sm text-gray-400 font-medium max-w-sm mx-auto">
+                  You must be physically present with the Super Admin to unlock
+                  this event. Scan their QR code or enter the manual PIN.
+                </p>
+              </div>
+
               <ScannerCamera
                 :forceStop="forceKillCamera"
-                @scanned="handleScan"
+                @scanned="submitUnlock"
                 @cameraStateChanged="isCameraActive = $event"
               />
 
-              <div class="p-6 sm:p-8">
-                <div
-                  class="flex flex-col md:flex-row md:items-center justify-between gap-6"
+              <div class="p-6 sm:p-8 bg-gray-50 border-t border-gray-100">
+                <form
+                  @submit.prevent="submitUnlock()"
+                  class="flex flex-col sm:flex-row gap-4 max-w-md mx-auto"
                 >
-                  <div>
-                    <h2 class="text-xl font-bold text-black font-montserrat">
-                      {{ selectedEventName }}
-                    </h2>
-                    <p class="text-sm text-gray-500 mt-1">
-                      Phase:
-                      <span class="font-bold text-black">{{
-                        eventStatus.replace("_ACTIVE", "").replace("_", " ")
-                      }}</span>
-                    </p>
-                  </div>
-                  <div
-                    class="px-4 py-2 bg-gray-50 rounded-lg text-xs font-bold text-gray-500 uppercase tracking-widest border border-gray-200 flex items-center gap-2"
-                  >
-                    <span
-                      class="w-2 h-2 rounded-full"
-                      :class="
-                        isCameraActive
-                          ? 'bg-green-500 animate-pulse'
-                          : 'bg-gray-400'
-                      "
-                    ></span>
-                    {{ isCameraActive ? "Scanning..." : "Standing By" }}
-                  </div>
-                </div>
-
-                <div
-                  v-if="scannedMatric || scanWarning"
-                  class="mt-5 animate-fade-in flex"
-                >
-                  <div
-                    class="flex items-center gap-2.5 px-4 py-2 rounded-lg border text-xs font-semibold tracking-wide font-poppins"
-                    :class="
-                      scanWarning
-                        ? 'bg-red-50 border-red-200 text-red-800'
-                        : 'bg-black border-black text-white shadow-sm'
-                    "
+                  <input
+                    v-model="unlockPin"
+                    type="text"
+                    placeholder="Enter 6-Digit PIN"
+                    class="flex-grow border-gray-300 focus:border-black border rounded-xl py-3 px-4 text-center sm:text-left text-black font-poppins uppercase tracking-widest font-bold outline-none"
+                    maxlength="6"
+                  />
+                  <button
+                    type="submit"
+                    :disabled="isUnlocking || unlockPin.length < 5"
+                    class="px-8 py-3 bg-black text-white font-bold rounded-xl hover:bg-gray-800 transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     <Icon
-                      :name="
-                        scanWarning
-                          ? 'material-symbols:error'
-                          : 'material-symbols:check-circle'
-                      "
-                      class="text-base shrink-0"
-                      :class="scanWarning ? 'text-red-500' : 'text-green-400'"
+                      v-if="isUnlocking"
+                      name="material-symbols:sync"
+                      class="animate-spin text-lg"
                     />
-                    <span class="truncate">
-                      <span
-                        v-if="!scanWarning"
-                        class="text-gray-400 font-normal mr-1"
-                        >Logged:</span
-                      >
-                      {{ scanWarning ? scanWarning : scannedMatric }}
-                    </span>
-                  </div>
-                </div>
+                    <Icon v-else name="material-symbols:key" class="text-lg" />
+                    Unlock
+                  </button>
+                </form>
               </div>
             </div>
 
-            <div
-              v-if="eventStatus !== 'SYNCING_PHASE'"
-              class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100"
-            >
-              <div class="flex items-center gap-3 mb-6">
-                <div
-                  class="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200 text-black"
-                >
-                  <Icon name="material-symbols:keyboard" class="text-2xl" />
-                </div>
-                <div>
-                  <h3
-                    class="text-sm font-bold uppercase tracking-widest text-black"
+            <template v-else>
+              <div
+                v-if="
+                  eventStatus === 'SIGN_IN_ACTIVE' ||
+                  eventStatus === 'SIGN_OUT_ACTIVE'
+                "
+                class="bg-white rounded-2xl shadow-sm border border-gray-100"
+              >
+                <ScannerCamera
+                  :forceStop="forceKillCamera"
+                  @scanned="handleScan"
+                  @cameraStateChanged="isCameraActive = $event"
+                />
+
+                <div class="p-6 sm:p-8">
+                  <div
+                    class="flex flex-col md:flex-row md:items-center justify-between gap-6"
                   >
-                    Manual Entry
-                  </h3>
+                    <div>
+                      <h2 class="text-xl font-bold text-black font-montserrat">
+                        {{ selectedEventName }}
+                      </h2>
+                      <p class="text-sm text-gray-500 mt-1">
+                        Phase:
+                        <span class="font-bold text-black">{{
+                          eventStatus.replace("_ACTIVE", "").replace("_", " ")
+                        }}</span>
+                      </p>
+                    </div>
+                    <div
+                      class="px-4 py-2 bg-gray-50 rounded-lg text-xs font-bold text-gray-500 uppercase tracking-widest border border-gray-200 flex items-center gap-2"
+                    >
+                      <span
+                        class="w-2 h-2 rounded-full"
+                        :class="
+                          isCameraActive
+                            ? 'bg-green-500 animate-pulse'
+                            : 'bg-gray-400'
+                        "
+                      ></span>
+                      {{ isCameraActive ? "Scanning..." : "Standing By" }}
+                    </div>
+                  </div>
+
+                  <div
+                    v-if="scannedMatric || scanWarning"
+                    class="mt-5 animate-fade-in flex"
+                  >
+                    <div
+                      class="flex items-center gap-2.5 px-4 py-2 rounded-lg border text-xs font-semibold tracking-wide font-poppins"
+                      :class="
+                        scanWarning
+                          ? 'bg-red-50 border-red-200 text-red-800'
+                          : 'bg-black border-black text-white shadow-sm'
+                      "
+                    >
+                      <Icon
+                        :name="
+                          scanWarning
+                            ? 'material-symbols:error'
+                            : 'material-symbols:check-circle'
+                        "
+                        class="text-base shrink-0"
+                        :class="scanWarning ? 'text-red-500' : 'text-green-400'"
+                      />
+                      <span class="truncate">
+                        <span
+                          v-if="!scanWarning"
+                          class="text-gray-400 font-normal mr-1"
+                          >Logged:</span
+                        >
+                        {{ scanWarning ? scanWarning : scannedMatric }}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <form
-                @submit.prevent="submitManual"
-                class="flex flex-col sm:flex-row gap-5"
+
+              <div
+                class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100"
               >
-                <input
-                  v-model="manualMatric"
-                  type="text"
-                  placeholder="FT"
-                  required
-                  class="flex-grow border-gray-400 focus:border-black border rounded-md py-3 px-4 text-black outline-none transition-all"
-                />
-                <button
-                  type="submit"
-                  :disabled="isManualSubmitting"
-                  class="h-14 px-8 bg-black text-white font-bold rounded-xl hover:bg-neutral-800 transition-all uppercase tracking-widest text-xs flex items-center gap-2 disabled:opacity-50"
+                <div class="flex items-center gap-3 mb-6">
+                  <div
+                    class="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200 text-black"
+                  >
+                    <Icon name="material-symbols:keyboard" class="text-2xl" />
+                  </div>
+                  <div>
+                    <h3
+                      class="text-sm font-bold uppercase tracking-widest text-black"
+                    >
+                      Manual Entry
+                    </h3>
+                  </div>
+                </div>
+                <form
+                  @submit.prevent="submitManual"
+                  class="flex flex-col sm:flex-row gap-5"
                 >
-                  <Icon
-                    v-if="isManualSubmitting"
-                    name="material-symbols:sync"
-                    class="animate-spin text-lg"
+                  <input
+                    v-model="manualMatric"
+                    type="text"
+                    placeholder="FT"
+                    required
+                    class="flex-grow border-gray-400 focus:border-black border rounded-md py-3 px-4 text-black outline-none transition-all"
                   />
-                  {{ isManualSubmitting ? "Verifying..." : "Verify Record" }}
-                </button>
-              </form>
-            </div>
+                  <button
+                    type="submit"
+                    :disabled="isManualSubmitting"
+                    class="h-14 px-8 bg-black text-white font-bold rounded-xl hover:bg-neutral-800 transition-all uppercase tracking-widest text-xs flex items-center gap-2 disabled:opacity-50"
+                  >
+                    <Icon
+                      v-if="isManualSubmitting"
+                      name="material-symbols:sync"
+                      class="animate-spin text-lg"
+                    />
+                    {{ isManualSubmitting ? "Verifying..." : "Verify Record" }}
+                  </button>
+                </form>
+              </div>
+            </template>
           </template>
         </div>
       </div>
@@ -438,6 +495,49 @@ const router = useRouter();
 const { token, initAuth } = useAuth();
 const toast = useToast();
 
+const isUnlocked = ref(false);
+const unlockPin = ref("");
+const isUnlocking = ref(false);
+
+// Check access whenever an event is selected
+const checkAccess = async () => {
+  if (!selectedEventId.value) return;
+  try {
+    const data = await useApiFetch(
+      `/events/${selectedEventId.value}/check-access`,
+    );
+    isUnlocked.value = data.unlocked;
+  } catch (error) {
+    console.error("Access check failed", error);
+  }
+};
+
+// The Unlock Logic
+const submitUnlock = async (scannedPin = null) => {
+  const finalPin =
+    typeof scannedPin === "string" ? scannedPin : unlockPin.value;
+  if (!finalPin) return;
+
+  isUnlocking.value = true;
+  forceKillCamera.value = true; // Kill the camera if they used it to scan the QR
+
+  try {
+    await useApiFetch(`/events/${selectedEventId.value}/unlock`, {
+      method: "POST",
+      body: { pin: finalPin },
+    });
+
+    isUnlocked.value = true;
+    toast.success("Event Unlocked! You may now begin scanning.");
+    unlockPin.value = "";
+  } catch (error) {
+    toast.error(error.data?.error || "Invalid PIN.");
+    setTimeout(() => (forceKillCamera.value = false), 500); // Restart camera if it failed
+  } finally {
+    isUnlocking.value = false;
+  }
+};
+
 // State
 const selectedEventId = ref(null);
 const eventStatus = ref("SIGN_IN_ACTIVE");
@@ -478,7 +578,7 @@ const loadActiveEvents = async () => {
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
   } catch (error) {
-    toast.error("Failed to load events", error);
+    toast.error("Failed to load events", "Backend Error");
   } finally {
     isLoadingEvents.value = false;
   }
@@ -517,10 +617,10 @@ const selectEvent = (eventId) => {
   forceKillCamera.value = true;
   selectedEventId.value = eventId;
   checkEventStatus();
+  checkAccess(); // <--- NEW
 
   if (pollInterval) clearInterval(pollInterval);
   pollInterval = setInterval(checkEventStatus, 10000);
-
   setTimeout(() => (forceKillCamera.value = false), 500);
 };
 

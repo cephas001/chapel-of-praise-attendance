@@ -208,15 +208,28 @@
 import { ref } from "vue";
 import { useAuth } from "~/composables/useAuth";
 import { useRouter } from "vue-router";
+import { useConfirm } from "~/composables/useConfirm";
 
 const { user, token, logout } = useAuth();
 const router = useRouter();
+const confirm = useConfirm();
 
 // Controls the mobile slide-out drawer
 const isMobileMenuOpen = ref(false);
 
-const handleLogout = () => {
-  if (confirm("Are you sure you want to log out?")) {
+const handleLogout = async () => {
+  // 1. Await the user's response from the custom modal
+  const isConfirmed = await confirm.ask({
+    title: "Log Out?",
+    message:
+      "This will end your current session and require you to log in again.",
+    confirmText: "Log Out",
+    cancelText: "Cancel",
+    isDestructive: true, // Makes the confirmation button red for emphasis
+  });
+
+  // 2. If they click "Log Out", proceed with clearing the session
+  if (isConfirmed) {
     logout();
     isMobileMenuOpen.value = false;
     router.push("/login");

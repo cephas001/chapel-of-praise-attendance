@@ -115,6 +115,55 @@
           >
         </button>
       </div>
+
+      <div class="mt-8 pt-8 border-t border-gray-100 relative z-10">
+        <h3
+          class="text-sm font-black font-poppins text-black mb-4 flex items-center gap-2"
+        >
+          <Icon
+            name="material-symbols:lock-person"
+            class="text-lg text-gray-500"
+          />
+          Usher Access Code
+        </h3>
+
+        <div
+          class="bg-gray-900 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-8 justify-between shadow-lg"
+        >
+          <div class="text-left text-white max-w-sm">
+            <h4 class="font-bold font-poppins text-lg mb-2">
+              Gatekeeper Active
+            </h4>
+            <p class="text-xs text-gray-400 leading-relaxed font-poppins mb-4">
+              Ushers cannot access the scanner interface until they scan this QR
+              code or manually enter the PIN below. Do not share this outside
+              the venue.
+            </p>
+            <div
+              class="inline-flex items-center gap-3 bg-black/50 border border-white/10 px-4 py-2 rounded-xl"
+            >
+              <span
+                class="text-gray-400 text-xs font-bold uppercase tracking-widest"
+                >Manual PIN:</span
+              >
+              <span
+                class="font-black text-xl tracking-widest text-green-400 font-montserrat"
+                >{{ event.unlock_pin }}</span
+              >
+            </div>
+          </div>
+
+          <div
+            class="bg-white p-3 rounded-xl shrink-0 border-4 border-gray-800"
+          >
+            <img
+              :src="`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${event.unlock_pin}&margin=0`"
+              alt="Unlock QR Code"
+              class="w-32 h-32 rounded-lg"
+            />
+          </div>
+        </div>
+      </div>
     </section>
   </div>
 </template>

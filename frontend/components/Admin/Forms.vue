@@ -143,7 +143,7 @@
                 <div class="flex justify-between items-center">
                   <label
                     class="text-[0.75rem] font-bold uppercase tracking-wider text-gray-400 font-poppins"
-                    >Username</label
+                    >Username*</label
                   >
                   <div
                     class="flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 rounded text-gray-500"
@@ -191,11 +191,8 @@
                     />
                   </div>
                 </div>
-                <div class="h-4">
-                  <p
-                    v-if="usernameStatus === 'taken'"
-                    class="text-xs text-red-500 font-bold font-poppins"
-                  >
+                <div class="h-4" v-if="usernameStatus === 'taken'">
+                  <p class="text-xs text-red-500 font-bold font-poppins">
                     This username is already taken.
                   </p>
                 </div>
@@ -206,10 +203,7 @@
                   <label
                     class="text-[0.75rem] font-bold uppercase tracking-wider text-gray-400 font-poppins"
                     >First Name
-                    <span class="text-gray-300 lowercase text-[0.65rem]"
-                      >(Optional)</span
-                    ></label
-                  >
+                  </label>
                   <input
                     v-model="newUser.first_name"
                     type="text"
@@ -221,10 +215,7 @@
                   <label
                     class="text-[0.75rem] font-bold uppercase tracking-wider text-gray-400 font-poppins"
                     >Last Name
-                    <span class="text-gray-300 lowercase text-[0.65rem]"
-                      >(Optional)</span
-                    ></label
-                  >
+                  </label>
                   <input
                     v-model="newUser.last_name"
                     type="text"
@@ -238,7 +229,7 @@
                 <div class="flex justify-between items-center">
                   <label
                     class="text-[0.75rem] font-bold uppercase tracking-wider text-gray-400 font-poppins"
-                    >Password</label
+                    >Password*</label
                   >
                 </div>
                 <div class="relative group">
@@ -274,7 +265,7 @@
               <div class="space-y-2">
                 <label
                   class="text-[0.75rem] font-bold uppercase tracking-wider text-gray-400 font-poppins"
-                  >Role</label
+                  >Role*</label
                 >
                 <select
                   v-model="newUser.role"
@@ -318,10 +309,6 @@
               <div
                 class="bg-blue-50 border border-blue-200 p-4 rounded-xl flex gap-3 text-blue-800"
               >
-                <Icon
-                  name="material-symbols:bolt"
-                  class="text-2xl shrink-0 text-blue-600"
-                />
                 <p class="text-sm font-medium font-poppins leading-relaxed">
                   Paste a list of first names. The system will auto-generate
                   accounts where <strong>Username</strong> = name (lowercase)

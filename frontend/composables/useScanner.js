@@ -72,6 +72,7 @@ export const useScanner = (selectedEventId, eventStatus) => {
     isSyncing.value = true;
     const recordsToProcess = [...unsyncedQueue.value];
     let successfulSyncCount = 0;
+    let syncAborted = false;
 
     for (const record of recordsToProcess) {
       try {
@@ -104,13 +105,14 @@ export const useScanner = (selectedEventId, eventStatus) => {
           await db.unsynced_scans.delete(record.id);
         } else {
           toast.error("Network died during sync loop:", error);
+          syncAborted = true;
           break;
         }
       }
     }
 
     await loadQueue();
-    if (successfulSyncCount > 0) {
+    if (successfulSyncCount > 0 && !syncAborted) {
       playSound(syncSuccessAudio);
     }
     isSyncing.value = false;

@@ -4,6 +4,17 @@ import { db } from "~/utils/db";
 import { useAuth } from "~/composables/useAuth";
 import { useToast } from "~/composables/useToast";
 
+const scanSuccessAudioUrl = new URL(
+  "../assets/audio/scan1.mp3",
+  import.meta.url,
+).href;
+const syncSuccessAudioUrl = new URL(
+  "../assets/audio/synced.mp3",
+  import.meta.url,
+).href;
+const errorAudioUrl = new URL("../assets/audio/error.mp3", import.meta.url)
+  .href;
+
 export const useScanner = (selectedEventId, eventStatus) => {
   const { user, token } = useAuth();
   const toast = useToast();
@@ -16,6 +27,23 @@ export const useScanner = (selectedEventId, eventStatus) => {
   const scannedMatric = ref(null);
   const scanWarning = ref(null);
   let logTimeout = null;
+  let scanSuccessAudio = null;
+  let syncSuccessAudio = null;
+  let errorAudio = null;
+
+  const playSound = (audio) => {
+    if (!audio) return;
+
+    try {
+      audio.currentTime = 0;
+      const playPromise = audio.play();
+      if (playPromise && typeof playPromise.catch === "function") {
+        playPromise.catch(() => {});
+      }
+    } catch (_) {
+      // Ignore playback errors from browser autoplay/device restrictions.
+    }
+  };
 
   // Clear the log toast after 4 seconds
   const clearLogAfterDelay = () => {
@@ -43,6 +71,7 @@ export const useScanner = (selectedEventId, eventStatus) => {
 
     isSyncing.value = true;
     const recordsToProcess = [...unsyncedQueue.value];
+    let successfulSyncCount = 0;
 
     for (const record of recordsToProcess) {
       try {
@@ -58,6 +87,7 @@ export const useScanner = (selectedEventId, eventStatus) => {
         });
 
         await db.unsynced_scans.delete(record.id);
+        successfulSyncCount += 1;
       } catch (error) {
         const status = error.statusCode || error.response?.status;
         if (status === 409 || status === 403) {
@@ -69,6 +99,7 @@ export const useScanner = (selectedEventId, eventStatus) => {
               errorData.message || errorData.error || "Rejected by server.",
           });
 
+          playSound(errorAudio);
           if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
           await db.unsynced_scans.delete(record.id);
         } else {
@@ -79,6 +110,9 @@ export const useScanner = (selectedEventId, eventStatus) => {
     }
 
     await loadQueue();
+    if (successfulSyncCount > 0) {
+      playSound(syncSuccessAudio);
+    }
     isSyncing.value = false;
   };
 
@@ -99,6 +133,7 @@ export const useScanner = (selectedEventId, eventStatus) => {
 
       if (existingRecord) {
         scanWarning.value = `Duplicate: ${cleanText} is already in the queue.`;
+        playSound(errorAudio);
         if (navigator.vibrate) navigator.vibrate([100, 100, 100]);
         clearLogAfterDelay();
         return;
@@ -110,6 +145,7 @@ export const useScanner = (selectedEventId, eventStatus) => {
         timestamp: new Date().toISOString(),
       });
 
+      playSound(scanSuccessAudio);
       scannedMatric.value = cleanText;
       await loadQueue();
       if (navigator.vibrate) navigator.vibrate(200);
@@ -125,6 +161,14 @@ export const useScanner = (selectedEventId, eventStatus) => {
   const setOffline = () => (isOnline.value = false);
 
   onMounted(() => {
+    scanSuccessAudio = new Audio(scanSuccessAudioUrl);
+    syncSuccessAudio = new Audio(syncSuccessAudioUrl);
+    errorAudio = new Audio(errorAudioUrl);
+
+    scanSuccessAudio.preload = "auto";
+    syncSuccessAudio.preload = "auto";
+    errorAudio.preload = "auto";
+
     isOnline.value = navigator.onLine;
     window.addEventListener("online", setOnline);
     window.addEventListener("offline", setOffline);
@@ -135,6 +179,22 @@ export const useScanner = (selectedEventId, eventStatus) => {
 
   onBeforeUnmount(() => {
     if (logTimeout) clearTimeout(logTimeout);
+
+    if (scanSuccessAudio) {
+      scanSuccessAudio.pause();
+      scanSuccessAudio = null;
+    }
+
+    if (syncSuccessAudio) {
+      syncSuccessAudio.pause();
+      syncSuccessAudio = null;
+    }
+
+    if (errorAudio) {
+      errorAudio.pause();
+      errorAudio = null;
+    }
+
     window.removeEventListener("online", setOnline);
     window.removeEventListener("offline", setOffline);
   });

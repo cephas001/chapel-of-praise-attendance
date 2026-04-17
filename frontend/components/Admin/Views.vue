@@ -80,6 +80,7 @@
                       <th class="p-3 pl-4">Username</th>
                       <th class="p-3">Full Name</th>
                       <th class="p-3">Role</th>
+                      <th class="p-3">Unit</th>
                       <th class="p-3 text-right">Actions</th>
                     </tr>
                   </thead>
@@ -115,6 +116,15 @@
                             "
                           >
                             {{ user.role.replace("_", " ") }}
+                          </span>
+                        </td>
+                        <td class="p-3">
+                          <span
+                            class="text-[10px] font-bold text-gray-500 uppercase tracking-widest bg-gray-50 px-2 py-1 rounded border border-gray-200"
+                          >
+                            {{
+                              user.unit ? user.unit.replace("_", " ") : "USHER"
+                            }}
                           </span>
                         </td>
                         <td class="p-3 pr-4 text-right">
@@ -173,6 +183,28 @@
                             <option value="SUPER_ADMIN">SUPER ADMIN</option>
                           </select>
                         </td>
+                        <td class="p-3">
+                          <select
+                            v-model="editData.unit"
+                            class="border border-gray-300 rounded px-2 py-1 text-xs outline-none focus:border-black bg-white"
+                          >
+                            <option value="USHER">USHER</option>
+                            <option value="DRAMA">DRAMA</option>
+                            <option value="MEDIA">MEDIA</option>
+                            <option value="CHOIR">CHOIR</option>
+                            <option value="TECHNICAL">TECHNICAL</option>
+                            <option value="ACADEMIC">ACADEMIC</option>
+                            <option value="BIBLE_STUDY">BIBLE STUDY</option>
+                            <option value="BROTHERS">BROTHERS</option>
+                            <option value="EVANGELISM">EVANGELISM</option>
+                            <option value="PRAYER">PRAYER</option>
+                            <option value="PROTOCOL">PROTOCOL</option>
+                            <option value="SISTERS">SISTERS</option>
+                            <option value="WELFARE">WELFARE</option>
+                            <option value="EDITORIAL">EDITORIAL</option>
+                            <option value="OTHER">OTHER</option>
+                          </select>
+                        </td>
                         <td class="p-3 pr-4 text-right">
                           <div class="flex items-center justify-end gap-2">
                             <button
@@ -209,7 +241,7 @@
                     </tr>
                     <tr v-if="users.length === 0">
                       <td
-                        colspan="4"
+                        colspan="5"
                         class="p-6 text-center text-xs text-gray-500"
                       >
                         No users found matching your criteria.
@@ -262,6 +294,11 @@
 
 <script setup>
 import { ref } from "vue";
+import { useToast } from "~/composables/useToast";
+import { useConfirm } from "~/composables/useConfirm";
+
+const toast = useToast();
+const confirmDialog = useConfirm();
 
 const isDirectoryOpen = ref(false);
 const isLoading = ref(false);
@@ -274,7 +311,7 @@ let typingTimer = null;
 
 // Inline Editing State
 const editingUserId = ref(null);
-const editData = ref({ first_name: "", last_name: "", role: "" });
+const editData = ref({ first_name: "", last_name: "", role: "", unit: "" });
 const isSaving = ref(false);
 
 const fetchUsers = async (page = 1) => {
@@ -292,11 +329,10 @@ const fetchUsers = async (page = 1) => {
   }
 };
 
-// Debounce the search so it doesn't query the DB on every single keystroke
 const handleSearch = () => {
   clearTimeout(typingTimer);
   typingTimer = setTimeout(() => {
-    fetchUsers(1); // Always reset to page 1 when searching
+    fetchUsers(1);
   }, 400);
 };
 
@@ -315,6 +351,7 @@ const startEditing = (user) => {
     first_name: user.first_name || "",
     last_name: user.last_name || "",
     role: user.role,
+    unit: user.unit || "USHER", // Default fallback if empty
   };
 };
 
@@ -330,33 +367,36 @@ const saveEdit = async (id) => {
       body: editData.value,
     });
 
-    // Instantly update the local UI array so we don't have to reload the whole page
     const index = users.value.findIndex((u) => u.id === id);
     if (index !== -1) {
       users.value[index] = { ...users.value[index], ...updatedUser };
     }
+    toast.success("User updated successfully");
     editingUserId.value = null;
   } catch (error) {
-    alert(error.data?.error || "Failed to update user.");
+    toast.error(error.data?.error || "Failed to update user.");
   } finally {
     isSaving.value = false;
   }
 };
 
 const deleteUser = async (id, username) => {
-  if (
-    !confirm(
-      `Are you sure you want to permanently delete the user "${username}"?`,
-    )
-  )
-    return;
+  const isConfirmed = await confirmDialog.ask({
+    title: "Delete User?",
+    message: `Are you sure you want to permanently delete the user "${username}"?`,
+    confirmText: "Yes, Delete",
+    cancelText: "Cancel",
+    isDestructive: true,
+  });
+
+  if (!isConfirmed) return;
 
   try {
     await useApiFetch(`/users/${id}`, { method: "DELETE" });
-    // Remove from UI array
     users.value = users.value.filter((u) => u.id !== id);
+    toast.success("User deleted successfully");
   } catch (error) {
-    alert(error.data?.error || "Failed to delete user.");
+    toast.error(error.data?.error || "Failed to delete user.");
   }
 };
 </script>

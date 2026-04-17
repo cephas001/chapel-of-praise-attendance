@@ -163,6 +163,8 @@
           </div>
 
           <template v-else>
+            <MyDutyWidget :eventId="selectedEventId" />
+
             <div
               v-if="eventStatus === 'SYNCING_PHASE'"
               class="bg-orange-50 border border-orange-200 rounded-2xl p-10 text-center shadow-sm flex flex-col items-center"

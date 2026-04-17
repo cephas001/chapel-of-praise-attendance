@@ -40,6 +40,7 @@ router.get("/", authenticateToken, requireSuperAdmin, async (req, res) => {
           first_name: true,
           last_name: true,
           role: true,
+          unit: true,
           created_at: true,
         },
         orderBy: orderByClause,
@@ -59,7 +60,7 @@ router.get("/", authenticateToken, requireSuperAdmin, async (req, res) => {
 
 // POST /api/users
 router.post("/", authenticateToken, requireSuperAdmin, async (req, res) => {
-  const { username, password, role, first_name, last_name } = req.body;
+  const { username, password, role, first_name, last_name, unit } = req.body;
   try {
     const existingUser = await prisma.user.findUnique({ where: { username } });
     if (existingUser)
@@ -71,6 +72,7 @@ router.post("/", authenticateToken, requireSuperAdmin, async (req, res) => {
         username: username.toLowerCase(),
         password_hash: hashedPassword,
         role: role || "USHER",
+        unit: unit || "USHER",
         first_name: first_name || null,
         last_name: last_name || null,
       },
@@ -84,6 +86,7 @@ router.post("/", authenticateToken, requireSuperAdmin, async (req, res) => {
         role: newUser.role,
         first_name: newUser.first_name,
         last_name: newUser.last_name,
+        unit: newUser.unit,
       },
     });
   } catch (error) {
@@ -125,7 +128,7 @@ router.patch("/heartbeat", authenticateToken, async (req, res) => {
 // PATCH /api/users/:id
 router.patch("/:id", authenticateToken, requireSuperAdmin, async (req, res) => {
   try {
-    const { role, first_name, last_name } = req.body;
+    const { role, first_name, last_name, unit } = req.body;
     if (req.user.id === req.params.id && role && role !== "SUPER_ADMIN") {
       return res.status(403).json({ error: "You cannot demote yourself." });
     }
@@ -134,6 +137,7 @@ router.patch("/:id", authenticateToken, requireSuperAdmin, async (req, res) => {
       where: { id: req.params.id },
       data: {
         ...(role && { role }),
+        ...(unit && { unit }),
         ...(first_name !== undefined && { first_name }),
         ...(last_name !== undefined && { last_name }),
       },
@@ -143,6 +147,7 @@ router.patch("/:id", authenticateToken, requireSuperAdmin, async (req, res) => {
         first_name: true,
         last_name: true,
         role: true,
+        unit: true,
       },
     });
 

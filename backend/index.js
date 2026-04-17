@@ -7,6 +7,8 @@ const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/users");
 const eventRoutes = require("./routes/events");
 const attendanceRoutes = require("./routes/attendance");
+const zoneRoutes = require("./routes/zones");
+const rosterRoutes = require("./routes/roster"); // Roster generation route
 
 const app = express();
 
@@ -25,6 +27,8 @@ app.use("/api", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/attendance", attendanceRoutes);
+app.use("/api/zones", zoneRoutes);
+app.use("/api/roster", rosterRoutes); // Roster generation route
 
 // Start the server
 const PORT = process.env.PORT || 5000;

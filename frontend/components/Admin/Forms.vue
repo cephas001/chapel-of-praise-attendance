@@ -262,22 +262,56 @@
                 </div>
               </div>
 
-              <div class="space-y-2">
-                <label
-                  class="text-[0.75rem] font-bold uppercase tracking-wider text-gray-400 font-poppins"
-                  >Role*</label
-                >
-                <select
-                  v-model="newUser.role"
-                  class="w-full border-gray-300 border focus:border-black rounded-md mt-1 py-3 px-4 text-black font-poppins transition-all duration-200 outline-none bg-white"
-                >
-                  <option value="USHER" class="text-sm">
-                    Usher (Scanner Only)
-                  </option>
-                  <option value="SUPER_ADMIN" class="text-sm">
-                    Super Admin (Full Access)
-                  </option>
-                </select>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="space-y-2">
+                  <label
+                    class="text-[0.75rem] font-bold uppercase tracking-wider text-gray-400 font-poppins"
+                    >Role*</label
+                  >
+                  <select
+                    v-model="newUser.role"
+                    class="w-full border-gray-300 border focus:border-black rounded-md mt-1 py-3 px-4 text-black font-poppins transition-all duration-200 outline-none bg-white"
+                  >
+                    <option value="USHER" class="text-sm">
+                      Usher (Scanner Only)
+                    </option>
+                    <option value="SUPER_ADMIN" class="text-sm">
+                      Super Admin (Full Access)
+                    </option>
+                  </select>
+                </div>
+
+                <div class="space-y-2">
+                  <label
+                    class="text-[0.75rem] font-bold uppercase tracking-wider text-gray-400 font-poppins"
+                    >Assigned Unit*</label
+                  >
+                  <select
+                    v-model="newUser.unit"
+                    required
+                    class="w-full border-gray-300 border focus:border-black rounded-md mt-1 py-3 px-4 text-black font-poppins transition-all duration-200 outline-none bg-white"
+                  >
+                    <option value="USHER" class="text-sm">Usher</option>
+                    <option value="DRAMA" class="text-sm">Drama</option>
+                    <option value="MEDIA" class="text-sm">Media</option>
+                    <option value="CHOIR" class="text-sm">Choir</option>
+                    <option value="TECHNICAL" class="text-sm">Technical</option>
+                    <option value="ACADEMIC" class="text-sm">Academic</option>
+                    <option value="BIBLE_STUDY" class="text-sm">
+                      Bible Study
+                    </option>
+                    <option value="BROTHERS" class="text-sm">Brothers</option>
+                    <option value="EVANGELISM" class="text-sm">
+                      Evangelism
+                    </option>
+                    <option value="PRAYER" class="text-sm">Prayer</option>
+                    <option value="PROTOCOL" class="text-sm">Protocol</option>
+                    <option value="SISTERS" class="text-sm">Sisters</option>
+                    <option value="WELFARE" class="text-sm">Welfare</option>
+                    <option value="EDITORIAL" class="text-sm">Editorial</option>
+                    <option value="OTHER" class="text-sm">Other</option>
+                  </select>
+                </div>
               </div>
 
               <div class="pt-2">
@@ -311,9 +345,10 @@
               >
                 <p class="text-sm font-medium font-poppins leading-relaxed">
                   Paste a list of first names. The system will auto-generate
-                  accounts where <strong>Username</strong> = name (lowercase)
-                  and <strong>Password</strong> =
-                  <code class="bg-blue-100 px-1 rounded">admin[name]</code>.
+                  accounts where <strong>Username</strong> = name (lowercase),
+                  <strong>Password</strong> =
+                  <code class="bg-blue-100 px-1 rounded">admin[name]</code>, and
+                  <strong>Unit</strong> = Usher.
                 </p>
               </div>
 
@@ -404,7 +439,6 @@ const { checkUsernameAvailability } = useAdmin();
 const emit = defineEmits(["eventCreated", "userCreated"]);
 const toast = useToast();
 
-// NEW: UI State for the Accordions. False = Collapsed by default.
 const isEventFormOpen = ref(false);
 const isUserFormOpen = ref(false);
 
@@ -421,12 +455,14 @@ const newEvent = ref({
   date: new Date().toISOString().split("T")[0],
 });
 
+// NEW: Added unit property to default state
 const newUser = ref({
   username: "",
   first_name: "",
   last_name: "",
   password: "",
   role: "USHER",
+  unit: "USHER",
 });
 
 const bulkNamesList = ref("");
@@ -453,7 +489,7 @@ const handleCreateEvent = async () => {
   emit("eventCreated", newEvent.value, (success) => {
     if (success) {
       newEvent.value.name = "";
-      isEventFormOpen.value = false; // Auto-close accordion on success!
+      isEventFormOpen.value = false;
     }
     isCreatingEvent.value = false;
   });
@@ -464,12 +500,14 @@ const handleCreateUser = async () => {
   isCreatingUser.value = true;
   emit("userCreated", newUser.value, (success) => {
     if (success) {
+      // NEW: Reset unit alongside other fields
       newUser.value = {
         username: "",
         first_name: "",
         last_name: "",
         password: "",
         role: "USHER",
+        unit: "USHER",
       };
       usernameStatus.value = "idle";
     }
@@ -497,6 +535,7 @@ const handleBulkCreate = async () => {
         first_name: name.trim(),
         password: `admin${safeUsername}`,
         role: "USHER",
+        unit: "USHER", // NEW: Ensure bulk items are attached to the default Usher unit
       };
 
       await new Promise((resolve) => {
@@ -519,11 +558,10 @@ const handleBulkCreate = async () => {
 </script>
 
 <style scoped>
-/* Fluid Accordion Animation */
 .accordion-enter-active,
 .accordion-leave-active {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  max-height: 800px; /* Provides enough room for the forms to slide down */
+  max-height: 800px;
   opacity: 1;
   overflow: hidden;
 }

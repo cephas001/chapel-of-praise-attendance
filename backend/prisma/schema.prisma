@@ -13,6 +13,29 @@ enum Role {
   SUPER_ADMIN
 }
 
+enum Unit {
+  USHER
+  DRAMA
+  MEDIA
+  CHOIR
+  TECHNICAL
+  ACADEMIC
+  BIBLE_STUDY
+  BROTHERS
+  EVANGELISM
+  PRAYER
+  PROTOCOL
+  SISTERS
+  WELFARE
+  EDITORIAL
+  OTHER
+}
+
+enum TaskType {
+  SCANNER
+  ARRANGER
+}
+
 enum EventStatus {
   UPCOMING
   SIGN_IN_ACTIVE
@@ -39,11 +62,13 @@ model User {
   is_active     Boolean  @default(true)
   created_at    DateTime @default(now())
   last_active   DateTime @default(now())
+  unit          Unit     @default(USHER)
 
   // Relations
   events_created    Event[]            @relation("EventCreator")
   scans_recorded    AttendanceRecord[] @relation("ScanUsher")
   unlocked_events   EventAccess[]
+  assignments       Assignment[]
 }
 
 model Student {
@@ -66,6 +91,7 @@ model Event {
   is_archived Boolean     @default(false)
   created_at  DateTime    @default(now())
   unlock_pin  String      @unique @default(cuid())
+  assignments Assignment[]
   
   created_by_id String
   created_by    User        @relation("EventCreator", fields: [created_by_id], references: [id])
@@ -106,4 +132,28 @@ model EventAccess {
   event       Event    @relation(fields: [event_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, event_id]) // An usher only needs to unlock an event once
+}
+
+// Represents the physical columns in the chapel
+model Zone {
+  id          String  @id @default(uuid())
+  name        String  @unique // e.g., "A1", "CHOIR & MEDIA"
+  prefix      String  // e.g., "A", "CHOIR" - used to group contiguous blocks
+  is_default  Boolean @default(true) // Marks the base case columns
+}
+
+// Maps who is doing what, where, and for which event
+model Assignment {
+  id          String   @id @default(uuid())
+  user_id     String
+  event_id    String
+  zone_name   String   // The specific column, e.g., "A1"
+  task_type   TaskType // SCANNER or ARRANGER
+  is_primary  Boolean  @default(true) // true for high-traffic, false for secondary rest columns
+  created_at  DateTime @default(now())
+
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  event       Event    @relation(fields: [event_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, event_id, zone_name]) // A user can't be assigned to the exact same column twice in one event
 }

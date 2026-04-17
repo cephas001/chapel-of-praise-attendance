@@ -120,8 +120,8 @@
                 >
                 <span
                   class="text-[10px] font-bold uppercase tracking-widest text-orange-600"
-                  >Low Traffic / Backup</span
-                >
+                  >Low Traffic
+                </span>
               </div>
               <Icon
                 name="material-symbols:shield-outline"

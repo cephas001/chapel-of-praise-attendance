@@ -107,8 +107,8 @@
                     }}</span>
                     <span
                       class="text-xs font-bold text-gray-500 pb-1.5 font-poppins"
-                      >/ {{ stats.roster.length }} online</span
-                    >
+                      >/ {{ stats.roster.length }}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -162,7 +162,9 @@
                       >
                         <th class="p-3 pl-5">Usher</th>
                         <th class="p-3">Status</th>
-                        <th class="p-3 pr-5 text-right">Scans Synced</th>
+                        <th class="p-3 text-right">Sign Ins</th>
+                        <th class="p-3 text-right">Sign Outs</th>
+                        <th class="p-3 pr-5 text-right">Total</th>
                       </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
@@ -171,13 +173,13 @@
                         :key="usher.id"
                         class="hover:bg-gray-50/50 transition-colors"
                       >
-                        <td class="p-3 pl-5 w-1/2">
+                        <td class="p-3 pl-5 w-1/3">
                           <span
                             class="font-bold text-sm font-poppins text-black"
                             >{{ usher.username }}</span
                           >
                         </td>
-                        <td class="p-3">
+                        <td class="p-3 w-1/4">
                           <span
                             class="px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border inline-flex items-center gap-1.5"
                             :class="
@@ -197,17 +199,27 @@
                             {{ usher.isOnline ? "Online" : "Offline" }}
                           </span>
                         </td>
-                        <td class="p-3 pr-5 text-right w-1/4">
+                        <td
+                          class="p-3 text-right font-montserrat font-bold text-black"
+                        >
+                          {{ usher.signIns }}
+                        </td>
+                        <td
+                          class="p-3 text-right font-montserrat font-bold text-black"
+                        >
+                          {{ usher.signOuts }}
+                        </td>
+                        <td class="p-3 pr-5 text-right">
                           <span
                             class="text-sm font-black font-montserrat text-black bg-gray-100 px-3 py-1 rounded-md border border-gray-200 shadow-sm"
                           >
-                            {{ usher.scans }}
+                            {{ usher.totalScans }}
                           </span>
                         </td>
                       </tr>
                       <tr v-if="paginatedRoster.length === 0">
                         <td
-                          colspan="3"
+                          colspan="5"
                           class="p-8 text-center text-xs text-gray-500 font-medium"
                         >
                           No ushers match your search.
@@ -216,7 +228,6 @@
                     </tbody>
                   </table>
                 </div>
-
                 <div
                   v-if="totalPages > 1"
                   class="mt-4 flex justify-between items-center bg-gray-50 p-2 rounded-xl border border-gray-200"
@@ -292,10 +303,10 @@ const processedRoster = computed(() => {
     result = result.filter((u) => u.username.toLowerCase().includes(query));
   }
 
-  // Apply Sort
+  // Apply Sort (CHANGED .scans to .totalScans)
   result.sort((a, b) => {
-    if (rosterSort.value === "scans_desc") return b.scans - a.scans;
-    if (rosterSort.value === "scans_asc") return a.scans - b.scans;
+    if (rosterSort.value === "scans_desc") return b.totalScans - a.totalScans;
+    if (rosterSort.value === "scans_asc") return a.totalScans - b.totalScans;
     if (rosterSort.value === "name_asc")
       return a.username.localeCompare(b.username);
     if (rosterSort.value === "status")

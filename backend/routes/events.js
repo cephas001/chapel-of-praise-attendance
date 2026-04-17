@@ -211,7 +211,7 @@ router.get(
       const activeThreshold = new Date(Date.now() - 60 * 1000); // 1 minute offline cutoff
 
       // Run all heavy queries in parallel
-      const [totalSignIns, totalSignOuts, recentScans, ushers] =
+      const [totalSignIns, totalSignOuts, recentScans, ushers, scanCounts] =
         await Promise.all([
           prisma.attendanceRecord.count({
             where: { event_id: eventId, scan_type: "SIGN_IN" },
@@ -223,29 +223,46 @@ router.get(
             where: { event_id: eventId, scanned_at: { gte: fiveMinsAgo } },
           }),
 
-          // Fetch ushers and count ONLY the scans they did for THIS specific event
+          // 1. Fetch the ushers
           prisma.user.findMany({
-            select: {
-              id: true,
-              username: true,
-              last_active: true,
-              _count: {
-                select: { scans_recorded: { where: { event_id: eventId } } },
-              },
-            },
-            orderBy: { scans_recorded: { _count: "desc" } }, // Highest scanners first
+            where: { role: "USHER" },
+            select: { id: true, username: true, last_active: true },
+          }),
+
+          // 2. Group all scans for this event by usher AND scan type
+          prisma.attendanceRecord.groupBy({
+            by: ["usher_id", "scan_type"],
+            where: { event_id: eventId },
+            _count: { _all: true },
           }),
         ]);
 
       const throughput = Math.round(recentScans / 5); // Average scans per minute
 
-      // Map the database output to a clean roster object
-      const roster = ushers.map((u) => ({
-        id: u.id,
-        username: u.username,
-        scans: u._count.scans_recorded,
-        isOnline: u.last_active >= activeThreshold,
-      }));
+      // 3. Merge the grouped counts into the roster array
+      const roster = ushers
+        .map((u) => {
+          // Find the specific counts for this usher in the grouped results
+          const signIns =
+            scanCounts.find(
+              (c) => c.usher_id === u.id && c.scan_type === "SIGN_IN",
+            )?._count._all || 0;
+          const signOuts =
+            scanCounts.find(
+              (c) => c.usher_id === u.id && c.scan_type === "SIGN_OUT",
+            )?._count._all || 0;
+          const totalScans = signIns + signOuts;
+
+          return {
+            id: u.id,
+            username: u.username,
+            signIns,
+            signOuts,
+            totalScans,
+            isOnline: u.last_active >= activeThreshold,
+          };
+        })
+        .sort((a, b) => b.totalScans - a.totalScans); // Sort Highest Scanners first by default
 
       res.json({
         totalSignIns,

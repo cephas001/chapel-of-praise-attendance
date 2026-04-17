@@ -144,6 +144,11 @@
             </div>
           </section>
 
+          <AdminAnalytics
+            v-if="selectedEvent?.id"
+            :eventId="selectedEvent.id"
+          />
+
           <AdminEventControls
             :event="selectedEvent"
             @statusUpdated="handleStatusUpdate"

@@ -106,6 +106,22 @@ router.get("/check", authenticateToken, requireSuperAdmin, async (req, res) => {
   }
 });
 
+// ==========================================
+// USHER HEARTBEAT (SILENT PING)
+// ==========================================
+router.patch("/heartbeat", authenticateToken, async (req, res) => {
+  try {
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { last_active: new Date() },
+    });
+    res.json({ success: true });
+  } catch (error) {
+    // We intentionally don't console.error this to avoid log spam
+    res.status(500).json({ error: "Heartbeat failed" });
+  }
+});
+
 // PATCH /api/users/:id
 router.patch("/:id", authenticateToken, requireSuperAdmin, async (req, res) => {
   try {

@@ -3,6 +3,7 @@ import { ref, onMounted, onBeforeUnmount, watch } from "vue";
 import { db } from "~/utils/db";
 import { useAuth } from "~/composables/useAuth";
 import { useToast } from "~/composables/useToast";
+import { useConfirm } from "~/composables/useConfirm";
 
 const scanSuccessAudioUrl = new URL(
   "../assets/audio/scan1.mp3",
@@ -18,6 +19,7 @@ const errorAudioUrl = new URL("../assets/audio/error.mp3", import.meta.url)
 export const useScanner = (selectedEventId, eventStatus) => {
   const { user, token } = useAuth();
   const toast = useToast();
+  const confirmDialog = useConfirm();
 
   const isOnline = ref(true);
   const isSyncing = ref(false);
@@ -30,6 +32,7 @@ export const useScanner = (selectedEventId, eventStatus) => {
   let scanSuccessAudio = null;
   let syncSuccessAudio = null;
   let errorAudio = null;
+  let heartbeatInterval = null;
 
   const playSound = (audio) => {
     if (!audio) return;
@@ -158,6 +161,21 @@ export const useScanner = (selectedEventId, eventStatus) => {
     }
   };
 
+  // The Heartbeat Engine
+  const startHeartbeat = () => {
+    if (heartbeatInterval) return;
+
+    const ping = () => {
+      // Silently ping the backend to update the last_active timestamp
+      if (isOnline.value) {
+        useApiFetch("/users/heartbeat", { method: "PATCH" }).catch(() => {});
+      }
+    };
+
+    ping(); // Immediate first ping
+    heartbeatInterval = setInterval(ping, 30000); // Repeat every 30 seconds
+  };
+
   // Setup Online/Offline listeners
   const setOnline = () => (isOnline.value = true);
   const setOffline = () => (isOnline.value = false);
@@ -174,13 +192,17 @@ export const useScanner = (selectedEventId, eventStatus) => {
     isOnline.value = navigator.onLine;
     window.addEventListener("online", setOnline);
     window.addEventListener("offline", setOffline);
+
     loadQueue().then(() => {
       if (isOnline.value) syncRecords();
     });
+
+    startHeartbeat();
   });
 
   onBeforeUnmount(() => {
     if (logTimeout) clearTimeout(logTimeout);
+    if (heartbeatInterval) clearInterval(heartbeatInterval);
 
     if (scanSuccessAudio) {
       scanSuccessAudio.pause();
@@ -206,12 +228,16 @@ export const useScanner = (selectedEventId, eventStatus) => {
   });
 
   const clearQueue = async () => {
-    if (
-      !confirm(
+    const isConfirmed = await confirmDialog.ask({
+      title: "Clear Queue?",
+      message:
         "⚠️ WARNING: This will permanently delete all unsynced scans from this device. They will NOT be saved to the database. Are you absolutely sure?",
-      )
-    )
-      return;
+      confirmText: "Yes, Delete Everything",
+      cancelText: "Cancel",
+      isDestructive: true,
+    });
+
+    if (!isConfirmed) return;
 
     try {
       await db.unsynced_scans.clear();

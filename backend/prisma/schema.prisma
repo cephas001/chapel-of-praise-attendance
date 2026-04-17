@@ -38,6 +38,7 @@ model User {
   role          Role     @default(USHER)
   is_active     Boolean  @default(true)
   created_at    DateTime @default(now())
+  last_active   DateTime @default(now())
 
   // Relations
   events_created    Event[]            @relation("EventCreator")

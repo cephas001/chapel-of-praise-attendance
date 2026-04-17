@@ -188,12 +188,75 @@ router.delete(
       res.json({ message: "Event deleted successfully" });
     } catch (error) {
       console.error("Error deleting event:", error);
-      res
-        .status(500)
-        .json({
-          message:
-            "Failed to delete event. It may have existing attendance records.",
-        });
+      res.status(500).json({
+        message:
+          "Failed to delete event. It may have existing attendance records.",
+      });
+    }
+  },
+);
+
+// ==========================================
+// GET LIVE ANALYTICS (SUPER ADMIN ONLY)
+// ==========================================
+router.get(
+  "/:id/live-stats",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const eventId = req.params.id;
+      // Calculate boundaries for live math
+      const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000);
+      const activeThreshold = new Date(Date.now() - 60 * 1000); // 1 minute offline cutoff
+
+      // Run all heavy queries in parallel
+      const [totalSignIns, totalSignOuts, recentScans, ushers] =
+        await Promise.all([
+          prisma.attendanceRecord.count({
+            where: { event_id: eventId, scan_type: "SIGN_IN" },
+          }),
+          prisma.attendanceRecord.count({
+            where: { event_id: eventId, scan_type: "SIGN_OUT" },
+          }),
+          prisma.attendanceRecord.count({
+            where: { event_id: eventId, scanned_at: { gte: fiveMinsAgo } },
+          }),
+
+          // Fetch ushers and count ONLY the scans they did for THIS specific event
+          prisma.user.findMany({
+            select: {
+              id: true,
+              username: true,
+              last_active: true,
+              _count: {
+                select: { scans_recorded: { where: { event_id: eventId } } },
+              },
+            },
+            orderBy: { scans_recorded: { _count: "desc" } }, // Highest scanners first
+          }),
+        ]);
+
+      const throughput = Math.round(recentScans / 5); // Average scans per minute
+
+      // Map the database output to a clean roster object
+      const roster = ushers.map((u) => ({
+        id: u.id,
+        username: u.username,
+        scans: u._count.scans_recorded,
+        isOnline: u.last_active >= activeThreshold,
+      }));
+
+      res.json({
+        totalSignIns,
+        totalSignOuts,
+        throughput,
+        activeUshers: roster.filter((u) => u.isOnline).length,
+        roster,
+      });
+    } catch (error) {
+      console.error("Analytics Error:", error);
+      res.status(500).json({ error: "Failed to fetch live stats" });
     }
   },
 );

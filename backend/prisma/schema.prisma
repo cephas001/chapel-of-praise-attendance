@@ -69,6 +69,7 @@ model User {
   scans_recorded    AttendanceRecord[] @relation("ScanUsher")
   unlocked_events   EventAccess[]
   assignments       Assignment[]
+  push_subscriptions PushSubscription[]
 }
 
 model Student {
@@ -156,4 +157,16 @@ model Assignment {
   event       Event    @relation(fields: [event_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, event_id, zone_name]) // A user can't be assigned to the exact same column twice in one event
+}
+
+// Stores browser endpoints for Web Push Notifications
+model PushSubscription {
+  id         String   @id @default(uuid())
+  user_id    String
+  endpoint   String   @unique
+  p256dh     String   // Cryptographic key from the browser
+  auth       String   // Auth token from the browser
+  created_at DateTime @default(now())
+
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }

@@ -314,6 +314,7 @@
         </div>
 
         <div class="lg:col-span-5 flex flex-col gap-6 order-2">
+          <AdminBroadcast />
           <AdminForms
             @eventCreated="handleEventCreation"
             @userCreated="handleUserCreation"

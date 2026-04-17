@@ -11,5 +11,14 @@
 </template>
 
 <script setup>
+import { useWebPush } from "~/composables/useWebPush";
+
+const { initPushNotifications } = useWebPush();
 const { token } = useAuth();
+
+onMounted(() => {
+  if (token.value) {
+    initPushNotifications();
+  }
+});
 </script>

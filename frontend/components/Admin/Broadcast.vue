@@ -66,7 +66,7 @@
                   "
                 >
                   <Icon name="material-symbols:group" class="text-lg" />
-                  All Personnel
+                  All
                 </button>
                 <button
                   type="button"
@@ -79,7 +79,7 @@
                   "
                 >
                   <Icon name="material-symbols:person-search" class="text-lg" />
-                  Specific Users
+                  Specific
                 </button>
               </div>
             </div>

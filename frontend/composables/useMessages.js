@@ -5,6 +5,7 @@ import { useToast } from "~/composables/useToast";
 export const useMessages = () => {
   const { token } = useAuth();
   const toast = useToast();
+  const config = useRuntimeConfig();
 
   const inbox = ref([]);
   let eventSource = null;
@@ -12,7 +13,7 @@ export const useMessages = () => {
 
   // Computed property for the red notification badge
   const unreadCount = computed(() => {
-    return inbox.value.filter(msg => !msg.is_read).length;
+    return inbox.value.filter((msg) => !msg.is_read).length;
   });
 
   const loadInbox = async () => {
@@ -26,7 +27,7 @@ export const useMessages = () => {
 
   const markAsRead = async (messageId) => {
     // Optimistic UI update
-    const msg = inbox.value.find(m => m.id === messageId);
+    const msg = inbox.value.find((m) => m.id === messageId);
     if (msg) msg.is_read = true;
 
     try {
@@ -39,7 +40,7 @@ export const useMessages = () => {
   const deleteMessage = async (messageId) => {
     // Optimistic UI update
     const previousInbox = [...inbox.value];
-    inbox.value = inbox.value.filter(m => m.id !== messageId);
+    inbox.value = inbox.value.filter((m) => m.id !== messageId);
 
     try {
       await useApiFetch(`/messages/${messageId}`, { method: "DELETE" });
@@ -62,11 +63,14 @@ export const useMessages = () => {
     alertAudio.preload = "auto";
 
     // Initialize the Server-Sent Events connection
-    // Note: We have to pass the token in the URL query string because EventSource 
+    // Note: We have to pass the token in the URL query string because EventSource
     // doesn't natively support custom Authorization headers.
     // (Make sure your backend authenticateToken middleware can read from req.query.token as a fallback!)
-    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-    eventSource = new EventSource(`${baseUrl}/messages/stream?token=${token.value}`);
+    const baseUrl = config.public.apiBase;
+
+    eventSource = new EventSource(
+      `${baseUrl}/messages/stream?token=${token.value}`,
+    );
 
     eventSource.onmessage = (event) => {
       // Ignore the empty ping messages used to keep the connection alive
@@ -75,7 +79,7 @@ export const useMessages = () => {
       try {
         const payload = JSON.parse(event.data);
 
-        if (payload.type === 'NEW_MESSAGE') {
+        if (payload.type === "NEW_MESSAGE") {
           // 1. Play Sound
           if (alertAudio) {
             alertAudio.currentTime = 0;
@@ -119,6 +123,6 @@ export const useMessages = () => {
     markAsRead,
     deleteMessage,
     startListening,
-    stopListening
+    stopListening,
   };
 };

@@ -2,7 +2,9 @@
   <div class="min-h-screen relative bg-gray-50 font-montserrat">
     <VitePwaManifest />
     <NavBar />
-    <div :class="token ? 'pt-24' : ''"><NuxtPage /></div>
+    <div :class="token ? 'pt-24' : ''">
+      <NuxtPage />
+    </div>
     <LazyPwaUpdater />
     <LazyPwaInstallPrompt />
     <ToastContainer />
@@ -11,14 +13,20 @@
 </template>
 
 <script setup>
-import { useWebPush } from "~/composables/useWebPush";
+import { onMounted, onBeforeUnmount } from "vue";
+import { useMessages } from "~/composables/useMessages";
 
-const { initPushNotifications } = useWebPush();
+const { startListening, stopListening, loadInbox } = useMessages();
 const { token } = useAuth();
 
 onMounted(() => {
   if (token.value) {
-    initPushNotifications();
+    loadInbox();
+    startListening();
   }
+});
+
+onBeforeUnmount(() => {
+  stopListening();
 });
 </script>

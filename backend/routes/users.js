@@ -2,61 +2,69 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 const prisma = require("../prismaClient");
 const { authenticateToken, requireSuperAdmin } = require("../middleware/auth");
+const paginate = require("../middleware/paginate");
 
 const router = express.Router();
 
-// GET /api/users
-router.get("/", authenticateToken, requireSuperAdmin, async (req, res) => {
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
-    const search = req.query.search || "";
-    const sort = req.query.sort || "desc";
+// ==========================================
+// GET ALL USERS (Paginated Table View)
+// ==========================================
+// Apply the paginate middleware and set the default limit to 10
+router.get(
+  "/",
+  authenticateToken,
+  requireSuperAdmin,
+  paginate(10),
+  async (req, res) => {
+    try {
+      // Destructure the clean variables from our middleware
+      const { limit, skip, search, sort } = req.pagination;
 
-    const whereClause = search
-      ? {
-          OR: [
-            { username: { contains: search, mode: "insensitive" } },
-            { first_name: { contains: search, mode: "insensitive" } },
-            { last_name: { contains: search, mode: "insensitive" } },
-          ],
-        }
-      : {};
+      // 1. Build Model-Specific Where Clause
+      const whereClause = search
+        ? {
+            OR: [
+              { username: { contains: search, mode: "insensitive" } },
+              { first_name: { contains: search, mode: "insensitive" } },
+              { last_name: { contains: search, mode: "insensitive" } },
+            ],
+          }
+        : {};
 
-    let orderByClause;
-    if (sort === "asc") orderByClause = { username: "asc" };
-    else if (sort === "desc_alpha") orderByClause = { username: "desc" };
-    else orderByClause = { created_at: "desc" };
+      // 2. Build Model-Specific Order Clause
+      let orderByClause;
+      if (sort === "asc") orderByClause = { username: "asc" };
+      else if (sort === "desc_alpha") orderByClause = { username: "desc" };
+      else orderByClause = { created_at: "desc" };
 
-    const [users, total] = await Promise.all([
-      prisma.user.findMany({
-        where: whereClause,
-        skip,
-        take: limit,
-        select: {
-          id: true,
-          username: true,
-          first_name: true,
-          last_name: true,
-          role: true,
-          unit: true,
-          created_at: true,
-        },
-        orderBy: orderByClause,
-      }),
-      prisma.user.count({ where: whereClause }),
-    ]);
+      // 3. Execute Prisma Queries
+      const [users, total] = await Promise.all([
+        prisma.user.findMany({
+          where: whereClause,
+          skip,
+          take: limit, // Use 'limit' directly instead of doing math here
+          select: {
+            id: true,
+            username: true,
+            first_name: true,
+            last_name: true,
+            role: true,
+            unit: true,
+            created_at: true,
+          },
+          orderBy: orderByClause,
+        }),
+        prisma.user.count({ where: whereClause }),
+      ]);
 
-    res.json({
-      users,
-      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
-    });
-  } catch (error) {
-    console.error("Error fetching users:", error);
-    res.status(500).json({ error: "Failed to fetch users" });
-  }
-});
+      // 4. Send the standardized response using our middleware helper
+      res.sendPaginated(users, total);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ error: "Failed to fetch users" });
+    }
+  },
+);
 
 // POST /api/users
 router.post("/", authenticateToken, requireSuperAdmin, async (req, res) => {
@@ -94,6 +102,35 @@ router.post("/", authenticateToken, requireSuperAdmin, async (req, res) => {
     res.status(500).json({ message: "Failed to create user" });
   }
 });
+
+// ==========================================
+// GET USER DIRECTORY (For Dropdowns & Selectors)
+// ==========================================
+router.get(
+  "/directory",
+  authenticateToken,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      // No pagination, no counts. Just a lightning-fast pull of the exact fields needed.
+      const directory = await prisma.user.findMany({
+        select: {
+          id: true,
+          username: true,
+          unit: true,
+        },
+        orderBy: {
+          username: "asc",
+        },
+      });
+
+      res.json(directory);
+    } catch (error) {
+      console.error("Error fetching user directory:", error);
+      res.status(500).json({ error: "Failed to fetch user directory" });
+    }
+  },
+);
 
 // GET /api/users/check
 router.get("/check", authenticateToken, requireSuperAdmin, async (req, res) => {

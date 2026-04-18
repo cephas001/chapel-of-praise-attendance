@@ -6,7 +6,7 @@
     >
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between items-center h-20">
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-3" @click="navigateTo('/')">
             <div
               class="bg-black text-white w-8 h-8 rounded-xl shadow-sm flex items-center justify-center"
             >
@@ -88,6 +88,20 @@
               <Icon name="material-symbols:logout" class="text-xl" />
             </button>
 
+            <NuxtLink
+              to="/inbox"
+              class="relative p-2 text-gray-600 hover:text-black transition-colors flex items-center justify-center"
+            >
+              <Icon name="material-symbols:notifications" class="text-2xl" />
+
+              <span
+                v-if="unreadCount > 0"
+                class="absolute top-0 right-0 w-4 h-4 bg-red-500 border-2 border-white rounded-full flex items-center justify-center text-[8px] font-black text-white"
+              >
+                {{ unreadCount > 9 ? "9+" : unreadCount }}
+              </span>
+            </NuxtLink>
+
             <button
               @click="isMobileMenuOpen = true"
               class="md:hidden text-black p-2.5 rounded-full hover:bg-gray-100 transition-colors flex items-center justify-center"
@@ -154,6 +168,25 @@
         </NuxtLink>
 
         <NuxtLink
+          to="/inbox"
+          @click="isMobileMenuOpen = false"
+          class="p-4 rounded-xl font-poppins font-bold text-sm tracking-wide transition-all duration-200 flex items-center gap-2 border"
+          :class="
+            $route.path === '/inbox'
+              ? 'bg-gray-100 text-black border-gray-200 shadow-inner'
+              : 'text-gray-500 border-transparent hover:bg-gray-50 hover:text-black hover:border-gray-200'
+          "
+        >
+          Inbox
+          <span
+            v-if="unreadCount > 0"
+            class="p-1 bg-red-500 rounded-xl flex items-center justify-center text-[8px] font-black text-white text-center"
+          >
+            {{ unreadCount > 9 ? "9+" : unreadCount }}
+          </span>
+        </NuxtLink>
+
+        <NuxtLink
           v-if="user?.role === 'SUPER_ADMIN'"
           to="/admin"
           @click="isMobileMenuOpen = false"
@@ -209,7 +242,9 @@ import { ref } from "vue";
 import { useAuth } from "~/composables/useAuth";
 import { useRouter } from "vue-router";
 import { useConfirm } from "~/composables/useConfirm";
+import { useMessages } from "~/composables/useMessages";
 
+const { unreadCount } = useMessages();
 const { user, token, logout } = useAuth();
 const router = useRouter();
 const confirm = useConfirm();

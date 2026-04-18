@@ -69,7 +69,7 @@ model User {
   scans_recorded    AttendanceRecord[] @relation("ScanUsher")
   unlocked_events   EventAccess[]
   assignments       Assignment[]
-  push_subscriptions PushSubscription[]
+  messages          Message[]
 }
 
 model Student {
@@ -159,13 +159,13 @@ model Assignment {
   @@unique([user_id, event_id, zone_name]) // A user can't be assigned to the exact same column twice in one event
 }
 
-// Stores browser endpoints for Web Push Notifications
-model PushSubscription {
+// Replaces PushSubscriptions. This acts as the Usher's Inbox.
+model Message {
   id         String   @id @default(uuid())
   user_id    String
-  endpoint   String   @unique
-  p256dh     String   // Cryptographic key from the browser
-  auth       String   // Auth token from the browser
+  title      String
+  body       String
+  is_read    Boolean  @default(false)
   created_at DateTime @default(now())
 
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)

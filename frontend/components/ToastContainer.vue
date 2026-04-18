@@ -52,21 +52,25 @@ const borderColors = {
   success: "border-green-200",
   error: "border-red-200",
   info: "border-blue-200",
+  warning: "border-orange-300", // NEW
 };
 const bgColors = {
   success: "bg-green-50",
   error: "bg-red-50",
   info: "bg-blue-50",
+  warning: "bg-orange-50", // NEW
 };
 const iconColors = {
   success: "text-green-600",
   error: "text-red-600",
   info: "text-blue-600",
+  warning: "text-orange-600", // NEW
 };
 const icons = {
   success: "material-symbols:check-circle",
   error: "material-symbols:error",
   info: "material-symbols:info",
+  warning: "material-symbols:notifications-active", // NEW: Rings a bell for broadcasts
 };
 </script>
 

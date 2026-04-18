@@ -16,8 +16,8 @@ export default defineNuxtConfig({
   pwa: {
     registerType: "prompt", // We use prompt so we can show an "Update" button when you push new code
     manifest: {
-      name: "Excellence Conference Scanner",
-      short_name: "EC Scanner",
+      name: "Chapel of Praise Scanner",
+      short_name: "COP Scanner",
       description: "Offline-first attendance scanner and admin dashboard.",
       theme_color: "#000000",
       background_color: "#ffffff",

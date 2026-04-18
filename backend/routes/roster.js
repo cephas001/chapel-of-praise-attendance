@@ -56,13 +56,13 @@ router.post(
           // Fallback: use any non-usher, but still isolate them
           dedicatedScanner = others.shift();
           warnings.push(
-            "⚠️ Notice: No Choir unit members available. A different unit member was assigned specifically to scan Choir & Media.",
+            "Notice: No Choir unit members available. A different unit member was assigned specifically to scan Choir & Media.",
           );
         } else if (ushers.length > 0) {
           // Fallback: use an usher if literally no one else is available
           dedicatedScanner = ushers.shift();
           warnings.push(
-            "⚠️ Notice: Severe personnel shortage. An Usher was pulled to specifically scan Choir & Media.",
+            "Notice: Severe personnel shortage. An Usher was pulled to specifically scan Choir & Media.",
           );
         }
 
@@ -81,7 +81,7 @@ router.post(
           lowTraffic = lowTraffic.filter((z) => z.id !== choirMediaZone.id);
         } else {
           warnings.push(
-            "⚠️ Critical: Could not assign anyone to Choir & Media. Total personnel exhausted.",
+            "Critical: Could not assign anyone to Choir & Media. Total personnel exhausted.",
           );
         }
       }
@@ -116,12 +116,12 @@ router.post(
 
       if (scannerPool.length < minScannersNeeded && highTraffic.length > 0) {
         warnings.push(
-          "⚠️ Critical: Extreme personnel shortage. Scanners have been assigned more than 2 high-traffic columns.",
+          "Critical: Extreme personnel shortage. Scanners have been assigned more than 2 high-traffic columns.",
         );
       }
       if (dedicatedArrangers.length === 0 && arrangerZones.length > 0) {
         warnings.push(
-          "⚠️ Warning: Personnel so low that 0 ushers could be spared for arranging.",
+          "Warning: Personnel so low that 0 ushers could be spared for arranging.",
         );
       }
 

@@ -9,7 +9,6 @@ const eventRoutes = require("./routes/events");
 const attendanceRoutes = require("./routes/attendance");
 const zoneRoutes = require("./routes/zones");
 const rosterRoutes = require("./routes/roster");
-const notificationRoutes = require("./routes/notifications");
 
 const app = express();
 
@@ -30,7 +29,6 @@ app.use("/api/events", eventRoutes);
 app.use("/api/attendance", attendanceRoutes);
 app.use("/api/zones", zoneRoutes);
 app.use("/api/roster", rosterRoutes);
-app.use("/api/notifications", notificationRoutes);
 
 // Start the server
 const PORT = process.env.PORT || 5000;

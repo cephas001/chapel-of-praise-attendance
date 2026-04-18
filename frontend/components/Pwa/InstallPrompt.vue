@@ -15,7 +15,7 @@
           </div>
           <div class="flex flex-col">
             <span class="text-sm font-black font-montserrat tracking-wide"
-              >Install EC Scanner</span
+              >Install COP Scanner</span
             >
             <span class="text-xs text-gray-400 font-medium mt-0.5"
               >Use it offline, anywhere.</span

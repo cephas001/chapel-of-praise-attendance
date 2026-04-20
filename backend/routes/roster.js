@@ -14,7 +14,12 @@ router.post(
   async (req, res) => {
     try {
       const { eventId } = req.params;
-      const { availableUserIds, activeZoneIds, lowTrafficZoneIds } = req.body;
+      const {
+        availableUserIds,
+        activeZoneIds,
+        lowTrafficZoneIds,
+        scanningOnly,
+      } = req.body;
 
       // 1. Fetch Users & Sort by least active first
       const users = await prisma.user.findMany({
@@ -23,7 +28,6 @@ router.post(
       });
       users.sort((a, b) => a._count.assignments - b._count.assignments);
 
-      // Using let instead of const so we can safely extract people out of these pools
       let ushers = users.filter((u) => u.unit === "USHER");
       let others = users.filter((u) => u.unit !== "USHER");
 
@@ -45,21 +49,17 @@ router.post(
       const choirMediaZone = zones.find((z) => z.prefix === "CHOIR_MEDIA");
 
       if (choirMediaZone) {
-        // Find the first available choir member (they are already sorted by least active!)
         const choirMemberIndex = others.findIndex((u) => u.unit === "CHOIR");
         let dedicatedScanner = null;
 
         if (choirMemberIndex !== -1) {
-          // Extract them completely from the 'others' pool
           dedicatedScanner = others.splice(choirMemberIndex, 1)[0];
         } else if (others.length > 0) {
-          // Fallback: use any non-usher, but still isolate them
           dedicatedScanner = others.shift();
           warnings.push(
             "Notice: No Choir unit members available. A different unit member was assigned specifically to scan Choir & Media.",
           );
         } else if (ushers.length > 0) {
-          // Fallback: use an usher if literally no one else is available
           dedicatedScanner = ushers.shift();
           warnings.push(
             "Notice: Severe personnel shortage. An Usher was pulled to specifically scan Choir & Media.",
@@ -76,7 +76,6 @@ router.post(
             is_primary: true,
           });
 
-          // Remove this zone from normal traffic queues so it isn't assigned twice
           highTraffic = highTraffic.filter((z) => z.id !== choirMediaZone.id);
           lowTraffic = lowTraffic.filter((z) => z.id !== choirMediaZone.id);
         } else {
@@ -89,45 +88,60 @@ router.post(
       // ==========================================
       // THE DYNAMIC BALANCER
       // ==========================================
-      // Filter out worker zones so Ushers aren't asked to arrange them
       const arrangerZones = zones.filter(
         (z) => z.prefix !== "CHOIR_MEDIA" && z.prefix !== "USHERS",
       );
 
-      const IDEAL_COLS_PER_ARRANGER = 5;
-      let targetArrangers = Math.ceil(
-        arrangerZones.length / IDEAL_COLS_PER_ARRANGER,
-      );
-      const minScannersNeeded = Math.ceil(highTraffic.length / 2);
-      const totalAvailable = ushers.length + others.length;
+      let dedicatedArrangers = [];
+      let scanningUshers = [];
+      let scannerPool = [];
 
-      let allowedArrangers = Math.min(targetArrangers, ushers.length);
-
-      if (totalAvailable - allowedArrangers < minScannersNeeded) {
-        allowedArrangers = Math.max(
-          0,
-          ushers.length - (minScannersNeeded - others.length),
+      if (scanningOnly) {
+        // Bypass arranging math entirely. Dump everyone into the scanner pool.
+        scanningUshers = ushers;
+        scannerPool = [...others, ...scanningUshers]; // Non-ushers are loaded at the front!
+      } else {
+        const IDEAL_COLS_PER_ARRANGER = 5;
+        let targetArrangers = Math.ceil(
+          arrangerZones.length / IDEAL_COLS_PER_ARRANGER,
         );
+        const minScannersNeeded = Math.ceil(highTraffic.length / 2);
+        const totalAvailable = ushers.length + others.length;
+
+        let allowedArrangers = Math.min(targetArrangers, ushers.length);
+
+        if (totalAvailable - allowedArrangers < minScannersNeeded) {
+          allowedArrangers = Math.max(
+            0,
+            ushers.length - (minScannersNeeded - others.length),
+          );
+        }
+
+        dedicatedArrangers = ushers.slice(0, allowedArrangers);
+        scanningUshers = ushers.slice(allowedArrangers);
+        scannerPool = [...others, ...scanningUshers]; // Non-ushers are loaded at the front!
+
+        if (dedicatedArrangers.length === 0 && arrangerZones.length > 0) {
+          warnings.push(
+            "Warning: Personnel so low that 0 ushers could be spared for arranging.",
+          );
+        }
       }
 
-      const dedicatedArrangers = ushers.slice(0, allowedArrangers);
-      const scanningUshers = ushers.slice(allowedArrangers);
-      const scannerPool = [...others, ...scanningUshers];
-
-      if (scannerPool.length < minScannersNeeded && highTraffic.length > 0) {
+      const minScannersNeededCheck = Math.ceil(highTraffic.length / 2);
+      if (
+        scannerPool.length < minScannersNeededCheck &&
+        highTraffic.length > 0
+      ) {
         warnings.push(
           "Critical: Extreme personnel shortage. Scanners have been assigned more than 2 high-traffic columns.",
-        );
-      }
-      if (dedicatedArrangers.length === 0 && arrangerZones.length > 0) {
-        warnings.push(
-          "Warning: Personnel so low that 0 ushers could be spared for arranging.",
         );
       }
 
       // ==========================================
       // LOOP 1: ARRANGER ASSIGNMENTS (Boundary-Aware Snapping)
       // ==========================================
+      // If Scanning Only is active, dedicatedArrangers will be empty, cleanly bypassing this block
       if (dedicatedArrangers.length > 0) {
         let startIndex = 0;
         const numChunks = dedicatedArrangers.length;
@@ -195,7 +209,7 @@ router.post(
       // ==========================================
       let scannerIndex = 0;
       const assignedHighTrafficUsers = [];
-      const currentEventWorkload = new Map(); // NEW: Track how many primary columns each gets
+      const currentEventWorkload = new Map();
 
       highTraffic.forEach((zone) => {
         if (scannerPool.length === 0) return;
@@ -211,12 +225,10 @@ router.post(
           is_primary: true,
         });
 
-        // Keep track of unique users
         if (!assignedHighTrafficUsers.some((u) => u.id === user.id)) {
           assignedHighTrafficUsers.push(user);
         }
 
-        // Increment their workload counter
         const currentCount = currentEventWorkload.get(user.id) || 0;
         currentEventWorkload.set(user.id, currentCount + 1);
 
@@ -226,8 +238,6 @@ router.post(
       // ==========================================
       // LOOP 3: LOW-TRAFFIC (SECONDARY) SCANNERS
       // ==========================================
-      // NEW: Sort the line! People with 1 high-traffic column go to the front.
-      // People with 2 high-traffic columns are pushed to the back.
       assignedHighTrafficUsers.sort((a, b) => {
         const countA = currentEventWorkload.get(a.id) || 0;
         const countB = currentEventWorkload.get(b.id) || 0;

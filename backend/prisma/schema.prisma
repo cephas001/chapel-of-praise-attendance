@@ -111,12 +111,12 @@ model AttendanceRecord {
   // Foreign Keys
   event_id      String
   matric_number String
-  usher_id      String
+  usher_id      String?
 
   // Relations
   event         Event    @relation(fields: [event_id], references: [id], onDelete: Cascade)
   student       Student  @relation(fields: [matric_number], references: [matric_number])
-  usher         User     @relation("ScanUsher", fields: [usher_id], references: [id])
+  usher         User?     @relation("ScanUsher", fields: [usher_id], references: [id], onDelete: SetNull)
 
   // DELIVERABLE 2: The database-level constraint preventing double scans.
   // A student can only have ONE sign_in and ONE sign_out per event.

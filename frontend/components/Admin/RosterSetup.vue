@@ -96,6 +96,29 @@
           </div>
         </div>
 
+        <div
+          class="flex justify-between items-center bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-6"
+        >
+          <div>
+            <h4 class="text-sm font-bold text-blue-900 font-montserrat">
+              Scanning Only Mode
+            </h4>
+            <p class="text-[10px] sm:text-xs text-blue-700 mt-0.5 font-poppins">
+              Bypass arranging duties and deploy all personnel as scanners.
+            </p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              v-model="scanningOnly"
+              class="sr-only peer"
+            />
+            <div
+              class="w-11 h-6 bg-blue-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"
+            ></div>
+          </label>
+        </div>
+
         <div class="space-y-6 max-h-[400px] overflow-y-auto pr-2">
           <div
             v-for="(zones, prefix) in groupedZones"
@@ -206,34 +229,32 @@ const props = defineProps({
 
 const emit = defineEmits(["rosterGenerated"]);
 const isGenerating = ref(false);
-
 const isLoading = ref(true);
+
+// Mode Toggle
+const scanningOnly = ref(false); // NEW
 
 // Personnel State
 const allUsers = ref([]);
-const availableUsers = ref([]); // Holds the objects of users who are checked
+const availableUsers = ref([]);
 
 // Layout State
 const allZones = ref([]);
-const activeZones = ref([]); // Holds the IDs of active columns
-const lowTrafficZones = ref([]); // Holds the IDs of columns marked as rest zones
+const activeZones = ref([]);
+const lowTrafficZones = ref([]);
 
 const fetchData = async () => {
   isLoading.value = true;
   try {
-    // We fetch users (limit 1000 to get everyone) and the layout zones
     const [usersData, zonesData] = await Promise.all([
       useApiFetch(`/users?limit=1000&sort=asc`),
       useApiFetch(`/zones`),
     ]);
 
-    // Filter out super admins, we only want to schedule actual functional team members
     allUsers.value = usersData.users.filter((u) => u.role !== "SUPER_ADMIN");
-    // By default, everyone is assumed available
     availableUsers.value = [...allUsers.value];
 
     allZones.value = zonesData;
-    // By default, activate all default zones
     activeZones.value = allZones.value.map((z) => z.id);
   } catch (error) {
     console.error("Setup error:", error);
@@ -242,7 +263,6 @@ const fetchData = async () => {
   }
 };
 
-// Group the flat array of zones by their prefix (A, B, C...) for clean UI rendering
 const groupedZones = computed(() => {
   return allZones.value.reduce((acc, zone) => {
     if (!acc[zone.prefix]) acc[zone.prefix] = [];
@@ -254,7 +274,6 @@ const groupedZones = computed(() => {
 const toggleZone = (id) => {
   if (activeZones.value.includes(id)) {
     activeZones.value = activeZones.value.filter((z) => z !== id);
-    // If we deactivate a zone, remove it from low traffic list too
     lowTrafficZones.value = lowTrafficZones.value.filter((z) => z !== id);
   } else {
     activeZones.value.push(id);
@@ -269,18 +288,15 @@ const toggleLowTraffic = (id) => {
   }
 };
 
-// NEW: Bulk action to toggle all zones in a prefix active/deactive
 const togglePrefixActive = (zones) => {
   const zoneIds = zones.map((z) => z.id);
   const allInactive = zoneIds.every((id) => !activeZones.value.includes(id));
 
   if (allInactive) {
-    // If all are inactive, turn them all on
     zoneIds.forEach((id) => {
       if (!activeZones.value.includes(id)) activeZones.value.push(id);
     });
   } else {
-    // Otherwise, turn them all off and remove them from low traffic
     activeZones.value = activeZones.value.filter((id) => !zoneIds.includes(id));
     lowTrafficZones.value = lowTrafficZones.value.filter(
       (id) => !zoneIds.includes(id),
@@ -288,24 +304,21 @@ const togglePrefixActive = (zones) => {
   }
 };
 
-// NEW: Bulk action to toggle all ACTIVE zones in a prefix to Low/High Traffic
 const togglePrefixLowTraffic = (zones) => {
   const activeZoneIds = zones
     .map((z) => z.id)
     .filter((id) => activeZones.value.includes(id));
-  if (activeZoneIds.length === 0) return; // Do nothing if all zones in this prefix are deactivated
+  if (activeZoneIds.length === 0) return;
 
   const allLowTraffic = activeZoneIds.every((id) =>
     lowTrafficZones.value.includes(id),
   );
 
   if (allLowTraffic) {
-    // If all active zones are low traffic, make them high traffic
     lowTrafficZones.value = lowTrafficZones.value.filter(
       (id) => !activeZoneIds.includes(id),
     );
   } else {
-    // Make all active zones low traffic
     activeZoneIds.forEach((id) => {
       if (!lowTrafficZones.value.includes(id)) lowTrafficZones.value.push(id);
     });
@@ -330,6 +343,7 @@ const runAlgorithm = async () => {
       availableUserIds: availableUsers.value.map((u) => u.id),
       activeZoneIds: activeZones.value,
       lowTrafficZoneIds: lowTrafficZones.value,
+      scanningOnly: scanningOnly.value, // NEW: Ship the flag to the backend
     };
 
     const data = await useApiFetch(`/roster/${props.eventId}/generate`, {
@@ -337,7 +351,6 @@ const runAlgorithm = async () => {
       body: payload,
     });
 
-    // Send the generated proposal to the Review UI
     emit("rosterGenerated", data);
   } catch (error) {
     console.error("Algorithm failed:", error);

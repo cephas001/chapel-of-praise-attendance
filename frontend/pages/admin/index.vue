@@ -261,9 +261,7 @@
                 <div class="flex items-center gap-3">
                   <h2
                     class="text-md font-black font-poppins flex items-center gap-2 m-0"
-                    :class="
-                      generatedProposal ? 'text-orange-600' : 'text-green-700'
-                    "
+                    :class="generatedProposal ? 'text-black' : 'text-green-700'"
                   >
                     <Icon
                       :name="
@@ -285,7 +283,7 @@
                   :class="[
                     isRosterReviewOpen ? 'rotate-180' : '',
                     generatedProposal
-                      ? 'bg-orange-50 text-orange-600'
+                      ? 'bg-black/5 text-black'
                       : 'bg-green-50 text-green-700',
                   ]"
                 >

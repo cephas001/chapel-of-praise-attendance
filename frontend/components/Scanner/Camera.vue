@@ -143,7 +143,7 @@ const startCamera = async () => {
         emit("scanned", decodedText);
 
         setTimeout(() => {
-          if (html5QrCode && html5QrCode.getState() === 2) {
+          if (html5QrCode && html5QrCode.getState() === 3) {
             html5QrCode.resume();
             isProcessing = false;
           }

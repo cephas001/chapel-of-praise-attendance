@@ -115,19 +115,17 @@ const startCamera = async () => {
     });
   }
 
-  // FIXED: The resolution constraints MUST go inside videoConstraints here, not in the first argument!
+  // FIXED: Removed the forced videoConstraints. The library will now automatically
+  // select the most efficient native resolution for the rear camera.
   const config = {
     fps: 5,
     qrbox: { width: 250, height: 150 },
-    videoConstraints: {
-      width: { ideal: 640 },
-      height: { ideal: 480 },
-    },
   };
 
-  const attemptStart = (cameraTarget) => {
-    return html5QrCode.start(
-      cameraTarget,
+  try {
+    // STRICTLY lock to the rear camera. No more front-camera fallbacks.
+    await html5QrCode.start(
+      { facingMode: "environment" },
       config,
       async (decodedText) => {
         const now = Date.now();
@@ -151,46 +149,36 @@ const startCamera = async () => {
           }
         }, 400);
       },
-      (err) => {},
+      (err) => {}, // Ignore frame-by-frame read errors
     );
-  };
 
-  try {
-    // Attempt 1: Rear Camera (Strictly 1 key!)
-    await attemptStart({ facingMode: "environment" });
-  } catch (err) {
-    console.warn("Rear camera failed. Attempting laptop webcam...", err);
-    try {
-      // Attempt 2: Front Camera / Laptop Webcam (Strictly 1 key!)
-      await attemptStart({ facingMode: "user" });
-    } catch (fallbackErr) {
-      console.error("Total camera failure:", fallbackErr);
-      isCameraActive.value = false;
-      emit("cameraStateChanged", false);
-      toast.error(
-        "Unable to access the camera. Please check your browser permissions.",
-      );
-    }
-  }
+    isStarting = false;
 
-  isStarting = false;
-
-  // Direct Hardware Polling for Torch
-  setTimeout(() => {
-    try {
-      const videoElement = document.querySelector("#reader video");
-      if (videoElement && videoElement.srcObject) {
-        const track = videoElement.srcObject.getVideoTracks()[0];
-        if (track) {
-          activeVideoTrack = track;
-          const capabilities = track.getCapabilities();
-          hasTorch.value = !!capabilities.torch;
+    // Direct Hardware Polling for Torch
+    setTimeout(() => {
+      try {
+        const videoElement = document.querySelector("#reader video");
+        if (videoElement && videoElement.srcObject) {
+          const track = videoElement.srcObject.getVideoTracks()[0];
+          if (track) {
+            activeVideoTrack = track;
+            const capabilities = track.getCapabilities();
+            hasTorch.value = !!capabilities.torch;
+          }
         }
+      } catch (e) {
+        hasTorch.value = false;
       }
-    } catch (e) {
-      hasTorch.value = false;
-    }
-  }, 500);
+    }, 500);
+  } catch (err) {
+    console.error("Camera startup failed:", err);
+    isStarting = false;
+    isCameraActive.value = false;
+    emit("cameraStateChanged", false);
+    toast.error(
+      "Unable to access the rear camera. Ensure permissions are granted and no other app is using it.",
+    );
+  }
 };
 
 const toggleTorch = async () => {

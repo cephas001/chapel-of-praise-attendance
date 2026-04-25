@@ -81,93 +81,147 @@ const emit = defineEmits(["scanned", "cameraStateChanged"]);
 const isCameraActive = ref(false);
 const hasTorch = ref(false);
 const isTorchOn = ref(false);
+
 let html5QrCode = null;
-let activeVideoTrack = null; // NEW: Keep track of the actual hardware stream
+let activeVideoTrack = null;
+let isProcessing = false;
+let isStarting = false;
+
+let lastScannedText = "";
+let lastScannedTime = 0;
 
 const startCamera = async () => {
+  if (isStarting) return;
+  isStarting = true;
+
   isCameraActive.value = true;
   emit("cameraStateChanged", true);
   await nextTick();
 
-  if (!document.getElementById("reader")) return;
-
-  if (!html5QrCode) {
-    const { Html5Qrcode } = await import("html5-qrcode");
-    html5QrCode = new Html5Qrcode("reader");
+  if (!document.getElementById("reader")) {
+    isStarting = false;
+    return;
   }
 
-  const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+  if (!html5QrCode) {
+    const { Html5Qrcode, Html5QrcodeSupportedFormats } =
+      await import("html5-qrcode");
+    html5QrCode = new Html5Qrcode("reader", {
+      useBarCodeDetectorIfSupported: true,
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+      ],
+    });
+  }
 
-  html5QrCode
-    .start(
-      { facingMode: "environment" },
+  // FIXED: The resolution constraints MUST go inside videoConstraints here, not in the first argument!
+  const config = {
+    fps: 5,
+    qrbox: { width: 250, height: 150 },
+    videoConstraints: {
+      width: { ideal: 640 },
+      height: { ideal: 480 },
+    },
+  };
+
+  const attemptStart = (cameraTarget) => {
+    return html5QrCode.start(
+      cameraTarget,
       config,
       async (decodedText) => {
-        if (html5QrCode.isScanning) {
-          await stopCamera();
-          emit("scanned", decodedText);
-        }
+        const now = Date.now();
+
+        if (decodedText === lastScannedText && now - lastScannedTime < 2000)
+          return;
+        if (!html5QrCode.isScanning || isProcessing) return;
+
+        isProcessing = true;
+        lastScannedText = decodedText;
+        lastScannedTime = now;
+
+        html5QrCode.pause(true);
+        if (navigator.vibrate) navigator.vibrate([200]);
+        emit("scanned", decodedText);
+
+        setTimeout(() => {
+          if (html5QrCode && html5QrCode.getState() === 2) {
+            html5QrCode.resume();
+            isProcessing = false;
+          }
+        }, 400);
       },
       (err) => {},
-    )
-    .then(() => {
-      // NEW: Direct Hardware Polling
-      setTimeout(() => {
-        try {
-          // Find the actual video element the library just created
-          const videoElement = document.querySelector("#reader video");
-          if (videoElement && videoElement.srcObject) {
-            // Get the raw video track from the browser
-            const track = videoElement.srcObject.getVideoTracks()[0];
-            if (track) {
-              activeVideoTrack = track;
-              // Ask the browser directly if this specific track supports the 'torch' constraint
-              const capabilities = track.getCapabilities();
-              hasTorch.value = !!capabilities.torch;
-            }
-          }
-        } catch (e) {
-          console.log("Torch detection failed:", e);
-          hasTorch.value = false;
-        }
-      }, 500); // Give the video element a half-second to fully mount
-    })
-    .catch((err) => {
-      console.log("Camera not detected/permitted");
+    );
+  };
+
+  try {
+    // Attempt 1: Rear Camera (Strictly 1 key!)
+    await attemptStart({ facingMode: "environment" });
+  } catch (err) {
+    console.warn("Rear camera failed. Attempting laptop webcam...", err);
+    try {
+      // Attempt 2: Front Camera / Laptop Webcam (Strictly 1 key!)
+      await attemptStart({ facingMode: "user" });
+    } catch (fallbackErr) {
+      console.error("Total camera failure:", fallbackErr);
       isCameraActive.value = false;
       emit("cameraStateChanged", false);
       toast.error(
         "Unable to access the camera. Please check your browser permissions.",
       );
-    });
+    }
+  }
+
+  isStarting = false;
+
+  // Direct Hardware Polling for Torch
+  setTimeout(() => {
+    try {
+      const videoElement = document.querySelector("#reader video");
+      if (videoElement && videoElement.srcObject) {
+        const track = videoElement.srcObject.getVideoTracks()[0];
+        if (track) {
+          activeVideoTrack = track;
+          const capabilities = track.getCapabilities();
+          hasTorch.value = !!capabilities.torch;
+        }
+      }
+    } catch (e) {
+      hasTorch.value = false;
+    }
+  }, 500);
 };
 
 const toggleTorch = async () => {
   if (!activeVideoTrack) return;
-
   try {
     const newState = !isTorchOn.value;
-    // Apply the constraint directly to the browser's video track
     await activeVideoTrack.applyConstraints({
       advanced: [{ torch: newState }],
     });
     isTorchOn.value = newState;
   } catch (error) {
-    console.error("Failed to toggle flashlight:", error);
-    toast.error(
-      "Your device blocked the flashlight request. Ensure your phone battery isn't too low.",
-    );
+    toast.error("Your device blocked the flashlight request.");
   }
 };
 
 const stopCamera = async () => {
+  if (isStarting) return;
+
   if (html5QrCode && html5QrCode.isScanning) {
-    await html5QrCode.stop();
+    try {
+      await html5QrCode.stop();
+    } catch (err) {
+      console.warn("Failed to stop camera cleanly:", err);
+    }
   }
+
   isCameraActive.value = false;
   isTorchOn.value = false;
   hasTorch.value = false;
   activeVideoTrack = null;
+  isProcessing = false;
   emit("cameraStateChanged", false);
 };
 

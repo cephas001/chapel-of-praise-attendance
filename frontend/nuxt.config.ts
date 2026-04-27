@@ -51,6 +51,11 @@ export default defineNuxtConfig({
       globPatterns: ["**/*.{js,css,html,png,svg,ico}"],
       // Increase the file size limit to 3MB just in case your bundled assets get large
       maximumFileSizeToCacheInBytes: 3000000,
+
+      // NEW: The magic rule that fixes the "You're offline" screen
+      navigateFallback: "/",
+      // NEW: Ensures query parameters (like ?event=123) don't break the offline cache
+      ignoreURLParametersMatching: [/.*/],
     },
     devOptions: {
       enabled: true, // Lets you test the PWA locally

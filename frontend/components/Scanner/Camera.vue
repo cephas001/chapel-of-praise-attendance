@@ -4,7 +4,7 @@
   >
     <div
       v-if="!isCameraActive"
-      class="p-8 sm:p-12 flex flex-col items-center justify-center text-center bg-gray-50 border-b border-gray-100 min-h-[300px]"
+      class="p-8 sm:p-12 flex flex-col items-center justify-center text-center bg-gray-50 border-b border-gray-100 min-h-75"
     >
       <button
         @click="startCamera"
@@ -52,7 +52,7 @@
         </button>
       </div>
 
-      <div id="reader" class="w-full min-h-[300px] sm:min-h-[400px]"></div>
+      <div id="reader" class="w-full min-h-75 sm:min-h-100"></div>
 
       <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
         <button

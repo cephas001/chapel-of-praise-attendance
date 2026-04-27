@@ -8,8 +8,6 @@ export const useAuth = () => {
     maxAge: 604800,
   });
 
-  const initAuth = () => {};
-
   const login = async (username, password) => {
     try {
       // No URL hardcoding, no headers, no JSON.stringify, no res.json()!
@@ -31,5 +29,5 @@ export const useAuth = () => {
     token.value = null;
   };
 
-  return { user, token, initAuth, login, logout };
+  return { user, token, login, logout };
 };

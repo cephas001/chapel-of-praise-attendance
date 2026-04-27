@@ -117,11 +117,10 @@ import { useAuth } from "~/composables/useAuth";
 import { useRouter } from "vue-router";
 
 const { inbox, loadInbox, markAsRead, deleteMessage } = useMessages();
-const { token, initAuth } = useAuth();
+const { token } = useAuth();
 const router = useRouter();
 
 onMounted(() => {
-  initAuth();
   if (!token.value) return router.push("/login");
   loadInbox();
 });

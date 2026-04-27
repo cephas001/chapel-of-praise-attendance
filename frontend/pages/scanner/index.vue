@@ -147,7 +147,7 @@
         <div class="lg:col-span-8 space-y-6">
           <div
             v-if="!selectedEventId"
-            class="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm flex flex-col items-center justify-center text-center h-[300px]"
+            class="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm flex flex-col items-center justify-center text-center h-75"
           >
             <div
               class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-400"
@@ -227,7 +227,7 @@
                     v-model="unlockPin"
                     type="text"
                     placeholder="Enter 6-Digit PIN"
-                    class="flex-grow border-gray-300 focus:border-black border rounded-xl py-3 px-4 text-center sm:text-left text-black font-poppins uppercase tracking-widest font-bold outline-none"
+                    class="grow border-gray-300 focus:border-black border rounded-xl py-3 px-4 text-center sm:text-left text-black font-poppins uppercase tracking-widest font-bold outline-none"
                     maxlength="6"
                   />
                   <button
@@ -351,7 +351,7 @@
                     type="text"
                     placeholder="FT"
                     required
-                    class="flex-grow border-gray-400 focus:border-black border rounded-md py-3 px-4 text-black outline-none transition-all"
+                    class="grow border-gray-400 focus:border-black border rounded-md py-3 px-4 text-black outline-none transition-all"
                   />
                   <button
                     type="submit"
@@ -494,7 +494,7 @@ import { useScanner } from "~/composables/useScanner";
 import { useToast } from "~/composables/useToast";
 
 const router = useRouter();
-const { token, initAuth } = useAuth();
+const { token } = useAuth();
 const toast = useToast();
 
 const isUnlocked = ref(false);
@@ -572,15 +572,38 @@ const selectedEventName = computed(() => {
 });
 
 const loadActiveEvents = async () => {
-  if (!isOnline.value) return;
+  // If offline, try to load the backup from local storage!
+  if (!isOnline.value) {
+    const cachedEvents = localStorage.getItem("backup_active_events");
+    if (cachedEvents) {
+      activeEvents.value = JSON.parse(cachedEvents);
+      toast.info("Loaded events from offline backup.");
+    } else {
+      isLoadingEvents.value = false;
+    }
+    return;
+  }
+
   isLoadingEvents.value = true;
   try {
     const data = await useApiFetch("/events/active");
     activeEvents.value = data.sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
+
+    // Save a fresh backup to local storage every time we successfully connect
+    localStorage.setItem(
+      "backup_active_events",
+      JSON.stringify(activeEvents.value),
+    );
   } catch (error) {
-    toast.error("Failed to load events", "Backend Error");
+    // If the API fails (e.g., terrible connection), fallback to cache
+    const cachedEvents = localStorage.getItem("backup_active_events");
+    if (cachedEvents) {
+      activeEvents.value = JSON.parse(cachedEvents);
+    } else {
+      toast.error("Failed to load events", "Backend Error");
+    }
   } finally {
     isLoadingEvents.value = false;
   }
@@ -627,7 +650,6 @@ const selectEvent = (eventId) => {
 };
 
 onMounted(() => {
-  initAuth();
   if (!token.value) return router.push("/login");
   loadActiveEvents();
 });

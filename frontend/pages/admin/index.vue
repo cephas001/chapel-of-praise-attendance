@@ -331,7 +331,7 @@ import { useAuth } from "~/composables/useAuth";
 import { useAdmin } from "~/composables/useAdmin";
 
 const router = useRouter();
-const { token, initAuth } = useAuth();
+const { token } = useAuth();
 const {
   allEvents,
   isLoadingEvents,
@@ -425,7 +425,6 @@ const handleRosterPublished = () => {
 
 // --- LIFECYCLE ---
 onMounted(() => {
-  initAuth();
   if (!token.value) return router.push("/login");
   loadAllEvents();
 });

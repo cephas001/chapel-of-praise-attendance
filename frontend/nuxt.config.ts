@@ -5,6 +5,10 @@ export default defineNuxtConfig({
 
   modules: ["@nuxt/ui", "@pinia/nuxt", "@nuxt/icon", "@vite-pwa/nuxt"],
 
+  routeRules: {
+    "/": { redirect: "/scanner" },
+  },
+
   css: ["~/assets/css/main.css"],
 
   colorMode: {

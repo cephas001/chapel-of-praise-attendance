@@ -23,18 +23,6 @@
             class="hidden md:flex items-center gap-8 absolute left-1/2 -translate-x-1/2 mt-1"
           >
             <NuxtLink
-              to="/"
-              class="font-montserrat text-sm tracking-wide transition-all duration-200 pb-1 border-b-2"
-              :class="
-                $route.path === '/'
-                  ? 'font-black text-black border-black'
-                  : 'font-semibold text-gray-500 border-transparent hover:text-black'
-              "
-            >
-              Homepage
-            </NuxtLink>
-
-            <NuxtLink
               to="/scanner"
               class="font-montserrat text-sm tracking-wide transition-all duration-200 pb-1 border-b-2"
               :class="
@@ -141,19 +129,6 @@
       </div>
 
       <div class="flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-3">
-        <NuxtLink
-          to="/"
-          @click="isMobileMenuOpen = false"
-          class="p-4 rounded-xl font-poppins font-bold text-sm tracking-wide transition-all duration-200 flex items-center gap-3 border"
-          :class="
-            $route.path === '/'
-              ? 'bg-gray-100 text-black border-gray-200 shadow-inner'
-              : 'text-gray-500 border-transparent hover:bg-gray-50 hover:text-black hover:border-gray-200'
-          "
-        >
-          Homepage
-        </NuxtLink>
-
         <NuxtLink
           to="/scanner"
           @click="isMobileMenuOpen = false"

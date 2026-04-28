@@ -448,7 +448,6 @@
                 @click="clearQueue"
                 class="flex-1 md:flex-none px-4 py-2.5 bg-white border border-red-200 text-red-600 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
               >
-                <Icon name="material-symbols:delete-sweep" class="text-lg" />
                 Clear Queue
               </button>
 
@@ -457,16 +456,6 @@
                 :disabled="isSyncing || !isOnline"
                 class="flex-1 md:flex-none px-4 py-2.5 bg-black text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-md"
               >
-                <Icon
-                  v-if="isSyncing"
-                  name="material-symbols:sync"
-                  class="text-lg animate-spin"
-                />
-                <Icon
-                  v-else
-                  name="material-symbols:cloud-upload"
-                  class="text-lg"
-                />
                 {{ isSyncing ? "Syncing..." : "Force Sync" }}
               </button>
             </div>

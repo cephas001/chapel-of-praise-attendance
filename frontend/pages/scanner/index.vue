@@ -130,16 +130,26 @@
                   Pending
                 </p>
               </div>
-              <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
+
+              <button
+                @click="viewRejections"
+                class="p-4 bg-gray-50 rounded-xl border border-gray-100 text-left hover:bg-red-50/50 transition-colors group relative"
+              >
                 <p class="text-2xl font-black text-red-600 font-montserrat">
                   {{ syncErrors.length }}
                 </p>
-                <p
-                  class="text-[10px] font-bold text-gray-500 uppercase tracking-wide mt-1"
-                >
-                  Rejections
-                </p>
-              </div>
+                <div class="flex items-center justify-between mt-1">
+                  <p
+                    class="text-[10px] font-bold text-gray-500 uppercase tracking-wide"
+                  >
+                    Rejections
+                  </p>
+                  <Icon
+                    name="material-symbols:chevron-right"
+                    class="text-gray-400 group-hover:text-red-600 transition-colors text-lg"
+                  />
+                </div>
+              </button>
             </div>
           </div>
         </div>
@@ -371,7 +381,12 @@
           </template>
         </div>
       </div>
-      <div v-if="unsyncedQueue.length > 0" class="mt-8 animate-fade-in">
+
+      <div
+        id="queue-inspector"
+        v-if="unsyncedQueue.length > 0 || syncErrors.length > 0"
+        class="mt-8 animate-fade-in"
+      >
         <section
           class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden"
         >
@@ -386,12 +401,49 @@
                 Local Storage Inspector
               </h2>
               <p class="text-xs text-gray-500 font-medium mt-1">
-                These records are saved on this device and waiting for a network
-                connection.
+                Records saved on this device.
               </p>
             </div>
 
-            <div class="flex items-center gap-3 w-full md:w-auto">
+            <div
+              class="flex p-1 bg-gray-200/50 rounded-lg w-full md:w-auto shrink-0"
+            >
+              <button
+                @click="activeTab = 'pending'"
+                class="px-6 py-2 text-xs font-bold uppercase tracking-widest rounded-md transition-all flex items-center gap-2 w-[50%] justify-center"
+                :class="
+                  activeTab === 'pending'
+                    ? 'bg-white text-black shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                "
+              >
+                Pending
+                <span
+                  class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full"
+                  >{{ unsyncedQueue.length }}</span
+                >
+              </button>
+              <button
+                @click="activeTab = 'rejected'"
+                class="px-6 py-2 text-xs font-bold uppercase tracking-widest rounded-md transition-all flex items-center gap-2 w-[50%] justify-center"
+                :class="
+                  activeTab === 'rejected'
+                    ? 'bg-white text-red-600 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                "
+              >
+                <span
+                  v-if="syncErrors.length > 0"
+                  class="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"
+                ></span>
+                Rejected
+                <span class="bg-red-50 text-red-600 px-2 py-0.5 rounded-full">{{
+                  syncErrors.length
+                }}</span>
+              </button>
+            </div>
+
+            <div class="flex items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
               <button
                 @click="clearQueue"
                 class="flex-1 md:flex-none px-4 py-2.5 bg-white border border-red-200 text-red-600 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
@@ -427,49 +479,104 @@
                   class="bg-gray-50 border-b border-gray-100 text-[10px] uppercase tracking-widest font-bold text-gray-400 font-poppins"
                 >
                   <th class="p-4 pl-6 sm:pl-8 font-medium">Matric Number</th>
-                  <th class="p-4 font-medium">Scan Type</th>
-                  <th class="p-4 pr-6 sm:pr-8 font-medium text-right">
+                  <th v-if="activeTab === 'pending'" class="p-4 font-medium">
+                    Scan Type
+                  </th>
+                  <th
+                    v-if="activeTab === 'pending'"
+                    class="p-4 pr-6 sm:pr-8 font-medium text-right"
+                  >
                     Timestamp
+                  </th>
+                  <th
+                    v-if="activeTab === 'rejected'"
+                    class="p-4 pr-6 sm:pr-8 font-medium"
+                  >
+                    Rejection Reason
                   </th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-100">
-                <tr
-                  v-for="record in unsyncedQueue"
-                  :key="record.id"
-                  class="hover:bg-gray-50/50 transition-colors"
-                >
-                  <td class="p-4 pl-6 sm:pl-8">
-                    <span class="font-black font-montserrat text-black">{{
-                      record.matric_number
-                    }}</span>
-                  </td>
-                  <td class="p-4">
-                    <span
-                      class="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border"
-                      :class="
-                        record.scan_type === 'SIGN_IN'
-                          ? 'bg-green-50 text-green-700 border-green-200'
-                          : 'bg-red-50 text-red-700 border-red-200'
-                      "
+                <template v-if="activeTab === 'pending'">
+                  <tr
+                    v-for="record in unsyncedQueue"
+                    :key="record.id"
+                    class="hover:bg-gray-50/50 transition-colors"
+                  >
+                    <td class="p-4 pl-6 sm:pl-8">
+                      <span class="font-semibold font-montserrat text-black">{{
+                        record.matric_number
+                      }}</span>
+                    </td>
+                    <td class="p-4">
+                      <span
+                        class="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border"
+                        :class="
+                          record.scan_type === 'SIGN_IN'
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : 'bg-red-50 text-red-700 border-red-200'
+                        "
+                      >
+                        {{ record.scan_type.replace("_", " ") }}
+                      </span>
+                    </td>
+                    <td class="p-4 pr-6 sm:pr-8 text-right">
+                      <span
+                        class="text-xs text-gray-500 font-medium font-poppins"
+                      >
+                        {{
+                          new Date(record.timestamp).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            second: "2-digit",
+                          })
+                        }}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr v-if="unsyncedQueue.length === 0">
+                    <td
+                      colspan="3"
+                      class="text-center p-8 text-xs text-gray-500 font-medium"
                     >
-                      {{ record.scan_type.replace("_", " ") }}
-                    </span>
-                  </td>
-                  <td class="p-4 pr-6 sm:pr-8 text-right">
-                    <span
-                      class="text-xs text-gray-500 font-medium font-poppins"
+                      No pending records in queue.
+                    </td>
+                  </tr>
+                </template>
+
+                <template v-if="activeTab === 'rejected'">
+                  <tr
+                    v-for="(record, index) in syncErrors"
+                    :key="index"
+                    class="hover:bg-red-50/30 transition-colors"
+                  >
+                    <td class="p-4 pl-6 sm:pl-8">
+                      <span class="font-semibold font-montserrat text-black">
+                        {{ record.matric_number || record.matric || "Unknown" }}
+                      </span>
+                    </td>
+                    <td class="p-4 pr-6 sm:pr-8">
+                      <span
+                        class="text-xs text-red-600 font-medium font-poppins"
+                      >
+                        {{
+                          record.error ||
+                          record.reason ||
+                          record.message ||
+                          "Validation failed or scanned previously"
+                        }}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr v-if="syncErrors.length === 0">
+                    <td
+                      colspan="2"
+                      class="text-center p-8 text-xs text-gray-500 font-medium"
                     >
-                      {{
-                        new Date(record.timestamp).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          second: "2-digit",
-                        })
-                      }}
-                    </span>
-                  </td>
-                </tr>
+                      No rejected records found.
+                    </td>
+                  </tr>
+                </template>
               </tbody>
             </table>
           </div>
@@ -501,7 +608,8 @@ const isUnlocked = ref(false);
 const unlockPin = ref("");
 const isUnlocking = ref(false);
 
-// Check access whenever an event is selected
+const activeTab = ref("pending");
+
 const checkAccess = async () => {
   if (!selectedEventId.value) return;
   try {
@@ -514,14 +622,13 @@ const checkAccess = async () => {
   }
 };
 
-// The Unlock Logic
 const submitUnlock = async (scannedPin = null) => {
   const finalPin =
     typeof scannedPin === "string" ? scannedPin : unlockPin.value;
   if (!finalPin) return;
 
   isUnlocking.value = true;
-  forceKillCamera.value = true; // Kill the camera if they used it to scan the QR
+  forceKillCamera.value = true;
 
   try {
     await useApiFetch(`/events/${selectedEventId.value}/unlock`, {
@@ -534,26 +641,24 @@ const submitUnlock = async (scannedPin = null) => {
     unlockPin.value = "";
   } catch (error) {
     toast.error(error.data?.error || "Invalid PIN.");
-    setTimeout(() => (forceKillCamera.value = false), 500); // Restart camera if it failed
+    setTimeout(() => (forceKillCamera.value = false), 500);
   } finally {
     isUnlocking.value = false;
   }
 };
 
-// State
 const selectedEventId = ref(null);
 const eventStatus = ref("SIGN_IN_ACTIVE");
 const activeEvents = shallowRef([]);
 const isLoadingEvents = ref(false);
 
 const isCameraActive = ref(false);
-const forceKillCamera = ref(false); // Used to pass a kill signal to ScannerCamera.vue
+const forceKillCamera = ref(false);
 
 const manualMatric = ref("FT");
 const isManualSubmitting = ref(false);
 let pollInterval = null;
 
-// Initialize our extracted Composable
 const {
   isOnline,
   isSyncing,
@@ -566,13 +671,39 @@ const {
   clearQueue,
 } = useScanner(selectedEventId, eventStatus);
 
+// NEW: Helper function to toggle the tab and scroll to the table
+const viewRejections = () => {
+  if (unsyncedQueue.value.length === 0 && syncErrors.value.length === 0) {
+    toast.info("No records in the local queue.");
+    return;
+  }
+
+  activeTab.value = "rejected";
+
+  // A small timeout ensures the Vue DOM updates the v-if wrapper before scrolling
+  setTimeout(() => {
+    document.getElementById("queue-inspector")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, 100);
+};
+
+watch(
+  () => syncErrors.value.length,
+  (newLength, oldLength) => {
+    if (newLength > oldLength) {
+      activeTab.value = "rejected";
+    }
+  },
+);
+
 const selectedEventName = computed(() => {
   const event = activeEvents.value.find((e) => e.id === selectedEventId.value);
   return event ? event.name : "Active Event";
 });
 
 const loadActiveEvents = async () => {
-  // If offline, try to load the backup from local storage!
   if (!isOnline.value) {
     const cachedEvents = localStorage.getItem("backup_active_events");
     if (cachedEvents) {
@@ -591,13 +722,11 @@ const loadActiveEvents = async () => {
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
 
-    // Save a fresh backup to local storage every time we successfully connect
     localStorage.setItem(
       "backup_active_events",
       JSON.stringify(activeEvents.value),
     );
   } catch (error) {
-    // If the API fails (e.g., terrible connection), fallback to cache
     const cachedEvents = localStorage.getItem("backup_active_events");
     if (cachedEvents) {
       activeEvents.value = JSON.parse(cachedEvents);
@@ -612,11 +741,11 @@ const loadActiveEvents = async () => {
 const submitManual = async () => {
   if (manualMatric.value) {
     isManualSubmitting.value = true;
-    forceKillCamera.value = true; // Tell child component to stop camera
+    forceKillCamera.value = true;
     await handleScan(manualMatric.value);
     manualMatric.value = "FT";
     isManualSubmitting.value = false;
-    setTimeout(() => (forceKillCamera.value = false), 500); // Reset the kill signal
+    setTimeout(() => (forceKillCamera.value = false), 500);
   }
 };
 
@@ -624,9 +753,9 @@ const checkEventStatus = async () => {
   if (!isOnline.value || !selectedEventId.value) return;
   try {
     const data = await useApiFetch(`/events/${selectedEventId.value}/status`);
-    eventStatus.value = data.status; // Watchers handle the rest
+    eventStatus.value = data.status;
   } catch (error) {
-    toast.error("Failed to check event status:", error);
+    toast.error("Failed to check event status:", "Backend Error");
   }
 };
 
@@ -642,7 +771,7 @@ const selectEvent = (eventId) => {
   forceKillCamera.value = true;
   selectedEventId.value = eventId;
   checkEventStatus();
-  checkAccess(); // <--- NEW
+  checkAccess();
 
   if (pollInterval) clearInterval(pollInterval);
   pollInterval = setInterval(checkEventStatus, 10000);

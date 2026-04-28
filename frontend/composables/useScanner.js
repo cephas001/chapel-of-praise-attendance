@@ -67,8 +67,9 @@ export const useScanner = (selectedEventId, eventStatus) => {
     if (
       isSyncing.value ||
       unsyncedQueue.value.length === 0 ||
-      !isOnline.value ||
-      !selectedEventId.value
+      !isOnline.value
+      // REMOVED: !selectedEventId.value
+      // We don't need an active event selected on the UI to sync past records!
     )
       return;
 
@@ -82,7 +83,7 @@ export const useScanner = (selectedEventId, eventStatus) => {
         await useApiFetch("/attendance/scan", {
           method: "POST",
           body: {
-            event_id: selectedEventId.value,
+            event_id: record.eventId, // FIXED: Use the saved eventId, not the UI state
             usher_id: user.value.id,
             matric_number: record.matric_number,
             scan_type: record.scan_type,
@@ -107,7 +108,7 @@ export const useScanner = (selectedEventId, eventStatus) => {
           if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
           await db.unsynced_scans.delete(record.id);
         } else {
-          toast.error("Network died during sync loop:", error);
+          toast.error("Network died during sync loop:", "Network Error");
           syncAborted = true;
           break;
         }
@@ -132,8 +133,13 @@ export const useScanner = (selectedEventId, eventStatus) => {
       eventStatus.value === "SIGN_OUT_ACTIVE" ? "SIGN_OUT" : "SIGN_IN";
 
     try {
+      // FIXED: Ensure we only flag duplicates for THIS specific event
       const existingRecord = await db.unsynced_scans
-        .where({ matric_number: cleanText, scan_type: currentScanType })
+        .where({
+          matric_number: cleanText,
+          scan_type: currentScanType,
+          eventId: selectedEventId.value,
+        })
         .first();
 
       if (existingRecord) {
@@ -145,9 +151,11 @@ export const useScanner = (selectedEventId, eventStatus) => {
       }
 
       await db.unsynced_scans.add({
+        id: crypto.randomUUID(),
         matric_number: cleanText,
         scan_type: currentScanType,
         timestamp: new Date().toISOString(),
+        eventId: selectedEventId.value, // Properly tagged!
       });
 
       playSound(scanSuccessAudio);
@@ -192,7 +200,6 @@ export const useScanner = (selectedEventId, eventStatus) => {
     isOnline.value = navigator.onLine;
     window.addEventListener("online", setOnline);
     window.addEventListener("offline", setOffline);
-
     loadQueue().then(() => {
       if (isOnline.value) syncRecords();
     });
@@ -231,7 +238,7 @@ export const useScanner = (selectedEventId, eventStatus) => {
     const isConfirmed = await confirmDialog.ask({
       title: "Clear Queue?",
       message:
-        "⚠️ WARNING: This will permanently delete all unsynced scans from this device. They will NOT be saved to the database. Are you absolutely sure?",
+        "WARNING: This will permanently delete all unsynced scans from this device. They will NOT be saved to the database. Are you absolutely sure?",
       confirmText: "Yes, Delete Everything",
       cancelText: "Cancel",
       isDestructive: true,

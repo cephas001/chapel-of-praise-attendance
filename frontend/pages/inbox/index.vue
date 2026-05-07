@@ -31,7 +31,7 @@
 
       <div
         v-if="inbox.length === 0"
-        class="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm flex flex-col items-center justify-center text-center h-[300px]"
+        class="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm flex flex-col items-center justify-center text-center h-75"
       >
         <div
           class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-300"
@@ -61,7 +61,7 @@
           "
         >
           <div class="flex justify-between items-start gap-4">
-            <div class="flex-grow">
+            <div class="grow">
               <div class="flex items-center gap-2 mb-1">
                 <span
                   v-if="!message.is_read"

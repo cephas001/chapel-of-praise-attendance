@@ -317,7 +317,7 @@
             @eventCreated="handleEventCreation"
             @userCreated="handleUserCreation"
           />
-          <AdminViews />
+          <AdminUserView />
         </div>
       </div>
     </main>

@@ -27,6 +27,7 @@ router.get(
               { username: { contains: search, mode: "insensitive" } },
               { first_name: { contains: search, mode: "insensitive" } },
               { last_name: { contains: search, mode: "insensitive" } },
+              { email: { contains: search, mode: "insensitive" } },
             ],
           }
         : {};
@@ -51,6 +52,7 @@ router.get(
             role: true,
             unit: true,
             created_at: true,
+            email: true,
           },
           orderBy: orderByClause,
         }),
@@ -68,21 +70,23 @@ router.get(
 
 // POST /api/users
 router.post("/", authenticateToken, requireSuperAdmin, async (req, res) => {
-  const { username, password, role, first_name, last_name, unit } = req.body;
+  const { username, password, role, first_name, last_name, unit, email } =
+    req.body;
   try {
-    const existingUser = await prisma.user.findUnique({ where: { username } });
+    const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser)
-      return res.status(400).json({ message: "Username is already taken." });
+      return res.status(400).json({ message: "Email is already taken." });
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = await prisma.user.create({
       data: {
-        username: username.toLowerCase(),
+        username: username?.toLowerCase() || null,
         password_hash: hashedPassword,
         role: role || "USHER",
         unit: unit || "USHER",
         first_name: first_name || null,
         last_name: last_name || null,
+        email: email.toLowerCase(),
       },
     });
 
@@ -95,6 +99,7 @@ router.post("/", authenticateToken, requireSuperAdmin, async (req, res) => {
         first_name: newUser.first_name,
         last_name: newUser.last_name,
         unit: newUser.unit,
+        email: newUser.email,
       },
     });
   } catch (error) {
@@ -118,6 +123,7 @@ router.get(
           id: true,
           username: true,
           unit: true,
+          email: true,
         },
         orderBy: {
           username: "asc",
@@ -134,15 +140,23 @@ router.get(
 
 // GET /api/users/check
 router.get("/check", authenticateToken, requireSuperAdmin, async (req, res) => {
-  const { username } = req.query;
-  if (!username) return res.json({ available: false });
+  const { field, value } = req.query;
+
+  if (!field || !value) return res.json({ available: false });
+
+  // Security: Only allow checking specific fields to prevent DB injection
+  if (!["email", "username"].includes(field)) {
+    return res.status(400).json({ error: "Invalid field provided" });
+  }
 
   try {
-    const existingUser = await prisma.user.findUnique({ where: { username } });
+    const existingUser = await prisma.user.findUnique({
+      where: { [field]: value },
+    });
     res.json({ available: !existingUser });
   } catch (error) {
-    console.error("Error checking username:", error);
-    res.status(500).json({ error: "Failed to check username" });
+    console.error(`Error checking ${field}:`, error);
+    res.status(500).json({ error: `Failed to check ${field}` });
   }
 });
 
@@ -165,7 +179,7 @@ router.patch("/heartbeat", authenticateToken, async (req, res) => {
 // PATCH /api/users/:id
 router.patch("/:id", authenticateToken, requireSuperAdmin, async (req, res) => {
   try {
-    const { role, first_name, last_name, unit } = req.body;
+    const { role, first_name, last_name, unit, username, email } = req.body;
     if (req.user.id === req.params.id && role && role !== "SUPER_ADMIN") {
       return res.status(403).json({ error: "You cannot demote yourself." });
     }
@@ -175,6 +189,8 @@ router.patch("/:id", authenticateToken, requireSuperAdmin, async (req, res) => {
       data: {
         ...(role && { role }),
         ...(unit && { unit }),
+        ...(username && { username: username.toLowerCase() }),
+        ...(email && { email: email.toLowerCase() }),
         ...(first_name !== undefined && { first_name }),
         ...(last_name !== undefined && { last_name }),
       },
@@ -185,6 +201,7 @@ router.patch("/:id", authenticateToken, requireSuperAdmin, async (req, res) => {
         last_name: true,
         role: true,
         unit: true,
+        email: true,
       },
     });
 

@@ -98,7 +98,7 @@ router.get("/:id/export", async (req, res) => {
   try {
     const records = await prisma.attendanceRecord.findMany({
       where: { event_id: req.params.id },
-      include: { student: true, usher: { select: { username: true } } },
+      include: { student: true, usher: { select: { email: true } } },
       orderBy: { scanned_at: "asc" },
     });
 
@@ -117,7 +117,7 @@ router.get("/:id/export", async (req, res) => {
       const level = record.student.level || "";
       const scannedTime = new Date(record.scanned_at).toLocaleString();
       const syncedTime = new Date(record.synced_at).toLocaleString();
-      csvData += `"${record.matric_number}","${fName}","${lName}","${dept}","${level}","${record.scan_type}","${scannedTime}","${syncedTime}","${record.usher.username}"\n`;
+      csvData += `"${record.matric_number}","${fName}","${lName}","${dept}","${level}","${record.scan_type}","${scannedTime}","${syncedTime}","${record.usher.email}"\n`;
     });
 
     res.setHeader("Content-Type", "text/csv");
@@ -226,7 +226,11 @@ router.get(
           // 1. Fetch the ushers
           prisma.user.findMany({
             where: { role: "USHER" },
-            select: { id: true, username: true, last_active: true },
+            select: {
+              id: true,
+              email: true,
+              last_active: true,
+            },
           }),
 
           // 2. Group all scans for this event by usher AND scan type
@@ -255,11 +259,13 @@ router.get(
 
           return {
             id: u.id,
-            username: u.username,
             signIns,
             signOuts,
             totalScans,
             isOnline: u.last_active >= activeThreshold,
+            email: u.email,
+            first_name: u.first_name,
+            last_name: u.last_name,
           };
         })
         .sort((a, b) => b.totalScans - a.totalScans); // Sort Highest Scanners first by default

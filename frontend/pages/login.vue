@@ -23,10 +23,10 @@
       <form @submit.prevent="handleLogin" class="space-y-6">
         <div class="space-y-3">
           <label
-            for="username"
+            for="email"
             class="font-poppins font-bold text-[11px] text-black tracking-widest uppercase"
           >
-            Username
+            Email
           </label>
           <div class="relative group mt-1">
             <div
@@ -35,9 +35,9 @@
               <Icon name="material-symbols:alternate-email" class="text-lg" />
             </div>
             <input
-              id="username"
-              v-model="username"
-              type="text"
+              id="email"
+              v-model="email"
+              type="email"
               required
               class="w-full border-black border rounded-md py-3 pl-11 pr-4 text-black font-poppins transition-all duration-200 placeholder:text-gray-400 outline-none"
             />
@@ -145,7 +145,7 @@ const router = useRouter();
 const { login } = useAuth();
 
 const showPassword = ref(false);
-const username = ref("");
+const email = ref("");
 const password = ref("");
 const errorMessage = ref("");
 const isLoading = ref(false);
@@ -156,7 +156,7 @@ const handleLogin = async () => {
 
   try {
     await login(
-      username.value.trim().toLowerCase(),
+      email.value.trim().toLowerCase(),
       password.value.trim().toLowerCase(),
     );
     // If successful, push them to the scanner page!

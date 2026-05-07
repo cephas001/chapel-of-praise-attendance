@@ -105,16 +105,14 @@ export const useAdmin = () => {
     }
   };
 
-  const checkUsernameAvailability = async (username) => {
-    if (!username || username.trim() === "") return null;
-
+  const checkAvailability = async (field, value) => {
     try {
       const data = await useApiFetch(
-        `/users/check?username=${encodeURIComponent(username)}`,
+        `/users/check?field=${field}&value=${value}`,
       );
-      return data.available; // Returns true or false
+      return data.available;
     } catch (error) {
-      toast.error("Failed to check username availability");
+      console.error(`Availability check failed for ${field}`, error);
       return null;
     }
   };
@@ -127,6 +125,6 @@ export const useAdmin = () => {
     createUser,
     deleteEvent,
     updateEventStatus,
-    checkUsernameAvailability,
+    checkAvailability,
   };
 };

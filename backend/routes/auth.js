@@ -6,10 +6,10 @@ const prisma = require("../prismaClient");
 const router = express.Router();
 
 router.post("/login", async (req, res) => {
-  const { username, password } = req.body;
+  const { email, password } = req.body;
 
   try {
-    const user = await prisma.user.findUnique({ where: { username } });
+    const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user || !user.is_active) {
       return res.status(401).json({ error: "Invalid credentials" });
@@ -29,7 +29,12 @@ router.post("/login", async (req, res) => {
     res.json({
       message: "Login successful",
       token: token,
-      user: { id: user.id, username: user.username, role: user.role },
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        username: user.username,
+      },
     });
   } catch (error) {
     console.error("Login error:", error);

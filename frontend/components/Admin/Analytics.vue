@@ -176,7 +176,9 @@
                         <td class="p-3 pl-5 w-1/3">
                           <span
                             class="font-bold text-sm font-poppins text-black"
-                            >{{ usher.username }}</span
+                            >{{
+                              usher.first_name + " " + usher.last_name
+                            }}</span
                           >
                         </td>
                         <td class="p-3 w-1/4">

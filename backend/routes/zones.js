@@ -28,7 +28,7 @@ router.get("/", authenticateToken, requireSuperAdmin, async (req, res) => {
         }
       };
 
-      generatePrefix("A", 9); // A1 - A9
+      generatePrefix("A", 10); // A1 - A10
       generatePrefix("B", 9); // B1 - B9
       generatePrefix("C", 8); // C1 - C8
       generatePrefix("D", 8); // D1 - D8

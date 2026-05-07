@@ -8,12 +8,12 @@ export const useAuth = () => {
     maxAge: 604800,
   });
 
-  const login = async (username, password) => {
+  const login = async (email, password) => {
     try {
       // No URL hardcoding, no headers, no JSON.stringify, no res.json()!
       const data = await useApiFetch("/login", {
         method: "POST",
-        body: { username, password },
+        body: { email, password },
       });
 
       user.value = data.user;

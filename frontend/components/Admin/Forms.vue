@@ -105,45 +105,15 @@
           <div
             class="px-6 pb-6 sm:px-8 sm:pb-8 pt-0 border-t border-gray-100 mt-2"
           >
-            <div class="flex justify-end mb-6 pt-4">
-              <div
-                class="bg-gray-100 p-1 rounded-lg flex gap-1 text-xs font-bold uppercase tracking-wider font-poppins"
-              >
-                <button
-                  @click="creationMode = 'single'"
-                  :class="
-                    creationMode === 'single'
-                      ? 'bg-white shadow-sm text-black'
-                      : 'text-gray-400 hover:text-black'
-                  "
-                  class="px-3 py-1.5 rounded-md transition-all"
-                >
-                  Single
-                </button>
-                <button
-                  @click="creationMode = 'bulk'"
-                  :class="
-                    creationMode === 'bulk'
-                      ? 'bg-white shadow-sm text-black'
-                      : 'text-gray-400 hover:text-black'
-                  "
-                  class="px-3 py-1.5 rounded-md transition-all"
-                >
-                  Bulk List
-                </button>
-              </div>
-            </div>
-
             <form
-              v-if="creationMode === 'single'"
               @submit.prevent="handleCreateUser"
-              class="space-y-6 animate-fade-in"
+              class="space-y-6 animate-fade-in mt-8"
             >
               <div class="space-y-2">
                 <div class="flex justify-between items-center">
                   <label
                     class="text-[0.75rem] font-bold uppercase tracking-wider text-gray-400 font-poppins"
-                    >Username*</label
+                    >Email*</label
                   >
                   <div
                     class="flex items-center gap-1.5 px-2 py-0.5 bg-gray-100 rounded text-gray-500"
@@ -161,39 +131,46 @@
 
                 <div class="relative">
                   <input
-                    v-model="newUser.username"
-                    @input="handleUsernameInput"
-                    type="text"
-                    placeholder="e.g. peter"
+                    v-model="newUser.email"
+                    @input="handleEmailInput"
+                    type="email"
+                    placeholder="e.g. okodughapeter@gmail.com"
                     required
                     class="w-full border focus:border-black rounded-md py-3 pl-4 pr-10 mt-2 text-black font-poppins transition-all duration-200 placeholder:text-gray-400 outline-none"
                     :class="
-                      usernameStatus === 'taken'
+                      emailStatus === 'taken' || emailStatus === 'invalid'
                         ? 'border-red-500 focus:border-red-600 bg-red-50/30'
                         : 'border-gray-400'
                     "
                   />
                   <div class="absolute right-3 top-1/2 -translate-y-1/2 mt-1">
                     <Icon
-                      v-if="usernameStatus === 'checking'"
+                      v-if="emailStatus === 'checking'"
                       name="material-symbols:sync"
                       class="animate-spin text-gray-400 text-lg"
                     />
                     <Icon
-                      v-else-if="usernameStatus === 'available'"
+                      v-else-if="emailStatus === 'available'"
                       name="material-symbols:check-circle"
                       class="text-green-500 text-lg"
                     />
                     <Icon
-                      v-else-if="usernameStatus === 'taken'"
+                      v-else-if="
+                        emailStatus === 'taken' || emailStatus === 'invalid'
+                      "
                       name="material-symbols:cancel"
                       class="text-red-500 text-lg"
                     />
                   </div>
                 </div>
-                <div class="h-4" v-if="usernameStatus === 'taken'">
+                <div class="h-4" v-if="emailStatus === 'taken'">
                   <p class="text-xs text-red-500 font-bold font-poppins">
-                    This username is already taken.
+                    This email is already taken.
+                  </p>
+                </div>
+                <div class="h-4" v-if="emailStatus === 'invalid'">
+                  <p class="text-xs text-red-500 font-bold font-poppins">
+                    Please enter a valid email address.
                   </p>
                 </div>
               </div>
@@ -317,7 +294,7 @@
               <div class="pt-2">
                 <button
                   type="submit"
-                  :disabled="isCreatingUser || usernameStatus === 'taken'"
+                  :disabled="isCreatingUser || emailStatus !== 'available'"
                   class="w-full bg-black text-white font-bold font-poppins py-4 rounded-md shadow-md hover:bg-gray-900 transition-all duration-200 active:scale-[0.98] flex justify-center items-center gap-2 uppercase tracking-widest text-sm disabled:opacity-50"
                 >
                   <Icon
@@ -334,95 +311,6 @@
                 </button>
               </div>
             </form>
-
-            <form
-              v-else
-              @submit.prevent="handleBulkCreate"
-              class="space-y-6 animate-fade-in pt-2"
-            >
-              <div
-                class="bg-blue-50 border border-blue-200 p-4 rounded-xl flex gap-3 text-blue-800"
-              >
-                <p class="text-sm font-medium font-poppins leading-relaxed">
-                  Paste a list of first names. The system will auto-generate
-                  accounts where <strong>Username</strong> = name (lowercase),
-                  <strong>Password</strong> =
-                  <code class="bg-blue-100 px-1 rounded">admin[name]</code>, and
-                  <strong>Unit</strong> = Usher.
-                </p>
-              </div>
-
-              <div class="space-y-2">
-                <label
-                  class="text-[0.75rem] font-bold uppercase tracking-wider text-gray-400 font-poppins"
-                  >Names List</label
-                >
-                <textarea
-                  v-model="bulkNamesList"
-                  rows="6"
-                  placeholder="Peter, John, Mary&#10;Or paste a column from Google Sheets..."
-                  required
-                  class="w-full border border-gray-400 focus:border-black rounded-md py-3 px-4 mt-2 text-black font-poppins outline-none resize-none"
-                ></textarea>
-              </div>
-
-              <div
-                v-if="bulkResults.total > 0"
-                class="grid grid-cols-3 gap-2 p-4 bg-gray-50 rounded-xl border border-gray-200 text-center"
-              >
-                <div>
-                  <span class="block text-2xl font-black">{{
-                    bulkResults.total
-                  }}</span
-                  ><span
-                    class="text-[10px] font-bold text-gray-500 uppercase tracking-widest"
-                    >Found</span
-                  >
-                </div>
-                <div>
-                  <span class="block text-2xl font-black text-green-600">{{
-                    bulkResults.success
-                  }}</span
-                  ><span
-                    class="text-[10px] font-bold text-green-600 uppercase tracking-widest"
-                    >Created</span
-                  >
-                </div>
-                <div>
-                  <span class="block text-2xl font-black text-orange-500">{{
-                    bulkResults.skipped
-                  }}</span
-                  ><span
-                    class="text-[10px] font-bold text-orange-500 uppercase tracking-widest"
-                    >Skipped</span
-                  >
-                </div>
-              </div>
-
-              <div class="pt-2">
-                <button
-                  type="submit"
-                  :disabled="isCreatingUser || !bulkNamesList"
-                  class="w-full bg-black text-white font-bold font-poppins py-4 rounded-md shadow-md hover:bg-gray-900 active:scale-[0.98] flex justify-center gap-2 uppercase tracking-widest text-sm disabled:opacity-50"
-                >
-                  <Icon
-                    v-if="isCreatingUser"
-                    name="material-symbols:sync"
-                    class="animate-spin text-lg"
-                  />
-                  <Icon
-                    v-else
-                    name="material-symbols:group-add"
-                    class="text-lg"
-                  />
-                  {{
-                    isCreatingUser
-                      ? `Processing (${bulkResults.success}/${bulkResults.total})...`
-                      : "Generate Accounts"
-                  }}
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       </Transition>
@@ -433,11 +321,11 @@
 <script setup>
 import { ref } from "vue";
 import { useAdmin } from "~/composables/useAdmin";
-import { useToast } from "~/composables/useToast";
+import { useToast } from "~/composables/useToast"; // Added for safety alerts
 
-const { checkUsernameAvailability } = useAdmin();
-const emit = defineEmits(["eventCreated", "userCreated"]);
+const { checkAvailability } = useAdmin();
 const toast = useToast();
+const emit = defineEmits(["eventCreated", "userCreated"]);
 
 const isEventFormOpen = ref(false);
 const isUserFormOpen = ref(false);
@@ -445,9 +333,8 @@ const isUserFormOpen = ref(false);
 const isCreatingEvent = ref(false);
 const isCreatingUser = ref(false);
 const showPassword = ref(false);
-const creationMode = ref("single");
 
-const usernameStatus = ref("idle");
+const emailStatus = ref("idle");
 let typingTimer = null;
 
 const newEvent = ref({
@@ -455,9 +342,9 @@ const newEvent = ref({
   date: new Date().toISOString().split("T")[0],
 });
 
-// NEW: Added unit property to default state
+// REMOVED username from default state
 const newUser = ref({
-  username: "",
+  email: "",
   first_name: "",
   last_name: "",
   password: "",
@@ -465,23 +352,34 @@ const newUser = ref({
   unit: "USHER",
 });
 
-const bulkNamesList = ref("");
-const bulkResults = ref({ total: 0, success: 0, skipped: 0 });
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const handleUsernameInput = () => {
-  newUser.value.username = newUser.value.username.toLowerCase().trim();
-  usernameStatus.value = "idle";
+const handleEmailInput = () => {
+  newUser.value.email = newUser.value.email.toLowerCase().trim();
+  emailStatus.value = "idle";
   clearTimeout(typingTimer);
 
-  if (newUser.value.username.length < 3) return;
+  if (newUser.value.email.length < 3) return;
 
-  usernameStatus.value = "checking";
+  if (!emailRegex.test(newUser.value.email)) {
+    emailStatus.value = "invalid";
+    return;
+  }
+
+  emailStatus.value = "checking";
   typingTimer = setTimeout(async () => {
-    const isAvailable = await checkUsernameAvailability(newUser.value.username);
-    if (isAvailable === true) usernameStatus.value = "available";
-    else if (isAvailable === false) usernameStatus.value = "taken";
-    else usernameStatus.value = "idle";
+    const isAvailable = await checkAvailability("email", newUser.value.email);
+    if (isAvailable === true) emailStatus.value = "available";
+    else if (isAvailable === false) emailStatus.value = "taken";
+    else emailStatus.value = "idle";
   }, 500);
+};
+
+// NEW: Helper function to generate a unique username from the email
+const generateUsername = (email) => {
+  const prefix = email.split("@")[0].replace(/[^a-zA-Z0-9]/g, ""); // Remove dots/special chars
+  const randomSuffix = Math.random().toString(36).substring(2, 6); // Add 4 random chars
+  return `${prefix}_${randomSuffix}`;
 };
 
 const handleCreateEvent = async () => {
@@ -496,64 +394,34 @@ const handleCreateEvent = async () => {
 };
 
 const handleCreateUser = async () => {
-  if (usernameStatus.value === "taken") return;
+  // STRICT GUARD: Prevent sneaky submissions
+  if (emailStatus.value !== "available") {
+    toast.error("Please provide a valid and available email.");
+    return;
+  }
+
   isCreatingUser.value = true;
-  emit("userCreated", newUser.value, (success) => {
+
+  // Attach the autogenerated username dynamically to the payload
+  const payloadToSubmit = {
+    ...newUser.value,
+    username: generateUsername(newUser.value.email),
+  };
+
+  emit("userCreated", payloadToSubmit, (success) => {
     if (success) {
-      // NEW: Reset unit alongside other fields
       newUser.value = {
-        username: "",
+        email: "",
         first_name: "",
         last_name: "",
         password: "",
         role: "USHER",
         unit: "USHER",
       };
-      usernameStatus.value = "idle";
+      emailStatus.value = "idle";
     }
     isCreatingUser.value = false;
   });
-};
-
-const handleBulkCreate = async () => {
-  if (!bulkNamesList.value) return;
-  isCreatingUser.value = true;
-
-  const rawNames = bulkNamesList.value
-    .split(/[\n,]+/)
-    .map((n) => n.trim())
-    .filter((n) => n);
-  bulkResults.value = { total: rawNames.length, success: 0, skipped: 0 };
-
-  for (const name of rawNames) {
-    const safeUsername = name.toLowerCase();
-    const isAvailable = await checkUsernameAvailability(safeUsername);
-
-    if (isAvailable) {
-      const payload = {
-        username: safeUsername,
-        first_name: name.trim(),
-        password: `admin${safeUsername}`,
-        role: "USHER",
-        unit: "USHER", // NEW: Ensure bulk items are attached to the default Usher unit
-      };
-
-      await new Promise((resolve) => {
-        emit("userCreated", payload, (success) => {
-          if (success) bulkResults.value.success++;
-          resolve();
-        });
-      });
-    } else {
-      bulkResults.value.skipped++;
-    }
-  }
-
-  toast.success(
-    `Bulk Import Complete!\nCreated: ${bulkResults.value.success}\nSkipped (Already Taken): ${bulkResults.value.skipped}`,
-  );
-  bulkNamesList.value = "";
-  isCreatingUser.value = false;
 };
 </script>
 

@@ -66,6 +66,7 @@ model User {
   email         String   @unique
   auth_provider String?
   google_id     String?
+  avatar_url    String?
 
   // Relations
   events_created    Event[]            @relation("EventCreator")

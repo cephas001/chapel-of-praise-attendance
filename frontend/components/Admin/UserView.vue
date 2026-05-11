@@ -77,7 +77,7 @@
                     <tr
                       class="bg-gray-50 border-b border-gray-200 text-[10px] uppercase tracking-widest font-bold text-gray-500 font-poppins"
                     >
-                      <th class="p-3 pl-4">Username</th>
+                      <th class="p-3 pl-4">User</th>
                       <th class="p-3">Full Name</th>
                       <th class="p-3">Email</th>
                       <th class="p-3">Role</th>
@@ -92,9 +92,40 @@
                       class="hover:bg-gray-50/50 transition-colors"
                     >
                       <td class="p-3 pl-4">
-                        <span class="font-bold text-sm font-poppins text-black">
-                          {{ user.username }}
-                        </span>
+                        <div class="flex items-center gap-3">
+                          <div
+                            class="w-8 h-8 rounded-full border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all"
+                            @click="
+                              openExpandedView(
+                                user.avatar_url,
+                                user.username,
+                                user.first_name,
+                              )
+                            "
+                          >
+                            <img
+                              v-if="user.avatar_url"
+                              :src="user.avatar_url"
+                              loading="lazy"
+                              alt="Avatar"
+                              class="w-full h-full object-cover"
+                            />
+                            <span
+                              v-else
+                              class="text-xs font-bold text-gray-400 uppercase"
+                            >
+                              {{
+                                user.first_name?.charAt(0) ||
+                                user.username?.charAt(0)
+                              }}
+                            </span>
+                          </div>
+                          <span
+                            class="font-bold text-sm font-poppins text-black"
+                          >
+                            {{ user.username }}
+                          </span>
+                        </div>
                       </td>
                       <td class="p-3">
                         <span class="text-xs text-gray-600 font-medium">
@@ -419,6 +450,13 @@
         </div>
       </div>
     </Teleport>
+
+    <AvatarViewerModal
+      :is-open="isExpandedViewOpen"
+      :image-url="expandedImageUrl"
+      :fallback-initials="expandedFallbackInitials"
+      @close="isExpandedViewOpen = false"
+    />
   </div>
 </template>
 
@@ -426,7 +464,7 @@
 import { ref, computed } from "vue";
 import { useToast } from "~/composables/useToast";
 import { useConfirm } from "~/composables/useConfirm";
-import { useAdmin } from "~/composables/useAdmin"; // Importing the refactored useAdmin
+import { useAdmin } from "~/composables/useAdmin";
 
 const toast = useToast();
 const confirmDialog = useConfirm();
@@ -455,14 +493,17 @@ const editData = ref({
 });
 const isSaving = ref(false);
 
-// Validation States
+// NEW: Viewer State
+const isExpandedViewOpen = ref(false);
+const expandedImageUrl = ref(null);
+const expandedFallbackInitials = ref("");
+
 const emailStatus = ref("idle");
 const usernameStatus = ref("idle");
 let emailTimer = null;
 let usernameTimer = null;
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Disable save button if either field is actively checking, taken, or invalid
 const isSaveDisabled = computed(() => {
   return (
     emailStatus.value === "checking" ||
@@ -475,6 +516,13 @@ const isSaveDisabled = computed(() => {
     !editData.value.username
   );
 });
+
+// NEW: Viewer Logic
+const openExpandedView = (url, username, firstName) => {
+  expandedImageUrl.value = url;
+  expandedFallbackInitials.value = firstName?.charAt(0) || username?.charAt(0);
+  isExpandedViewOpen.value = true;
+};
 
 const fetchUsers = async (page = 1) => {
   isLoading.value = true;
@@ -505,13 +553,11 @@ const toggleAccordion = () => {
   }
 };
 
-// --- MODAL & VALIDATION LOGIC ---
-
 const startEditing = (user) => {
   originalEditData.value = { ...user };
   editData.value = {
     id: user.id,
-    email: user.email || "", // Ensure it defaults to empty string, not null
+    email: user.email || "",
     username: user.username || "",
     first_name: user.first_name || "",
     last_name: user.last_name || "",
@@ -519,7 +565,6 @@ const startEditing = (user) => {
     unit: user.unit || "USHER",
   };
 
-  // FIXED: Only mark as available if they actually have an email/username
   emailStatus.value = editData.value.email ? "available" : "idle";
   usernameStatus.value = editData.value.username ? "available" : "idle";
 
@@ -536,7 +581,6 @@ const handleEditEmailCheck = () => {
   editData.value.email = val;
   clearTimeout(emailTimer);
 
-  // Smart check: If they typed their original email back in, it's safe.
   if (val === originalEditData.value.email) {
     emailStatus.value = "available";
     return;
@@ -563,7 +607,6 @@ const handleEditUsernameCheck = () => {
   editData.value.username = val;
   clearTimeout(usernameTimer);
 
-  // Smart check: If they typed their original username back in, it's safe.
   if (val === originalEditData.value.username) {
     usernameStatus.value = "available";
     return;
@@ -643,6 +686,20 @@ const deleteUser = async (id, username) => {
   from {
     opacity: 0;
     transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+/* Zoom-in animation for modal contents */
+.animate-zoom-in {
+  animation: zoomIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
   }
   to {
     opacity: 1;

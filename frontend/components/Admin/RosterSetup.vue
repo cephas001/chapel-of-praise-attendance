@@ -57,14 +57,33 @@
             :key="user.id"
             class="flex items-center justify-between p-3 border-b border-gray-100 last:border-0 hover:bg-white transition-colors"
           >
-            <div>
-              <span class="font-bold text-sm font-poppins text-black block">{{
-                user.username
-              }}</span>
-              <span
-                class="text-[10px] font-bold text-gray-500 uppercase tracking-widest"
-                >{{ user.unit }}</span
+            <div class="flex items-center gap-3">
+              <div
+                class="w-8 h-8 rounded-full border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all"
+                @click.stop.prevent="openAvatarViewer(user)"
               >
+                <img
+                  v-if="user.avatar_url"
+                  :src="user.avatar_url"
+                  loading="lazy"
+                  alt="Avatar"
+                  class="w-full h-full object-cover"
+                />
+                <span v-else class="text-xs font-bold text-gray-400 uppercase">
+                  {{ user.first_name?.charAt(0) || user.username?.charAt(0) }}
+                </span>
+              </div>
+
+              <div>
+                <span class="font-bold text-sm font-poppins text-black block">
+                  {{ user.username }}
+                </span>
+                <span
+                  class="text-[10px] font-bold text-gray-500 uppercase tracking-widest"
+                >
+                  {{ user.unit }}
+                </span>
+              </div>
             </div>
 
             <label class="relative inline-flex items-center cursor-pointer">
@@ -217,11 +236,19 @@
         {{ isGenerating ? "Calculating..." : "Run Algorithm" }}
       </button>
     </div>
+
+    <AvatarViewerModal
+      :is-open="isViewerOpen"
+      :image-url="viewerImageUrl"
+      :fallback-initials="viewerInitials"
+      @close="isViewerOpen = false"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from "vue";
+import AvatarViewerModal from "~/components/AvatarViewerModal.vue"; // Ensure path matches your structure
 
 const props = defineProps({
   eventId: String,
@@ -231,17 +258,25 @@ const emit = defineEmits(["rosterGenerated"]);
 const isGenerating = ref(false);
 const isLoading = ref(true);
 
-// Mode Toggle
-const scanningOnly = ref(false); // NEW
+const scanningOnly = ref(false);
 
-// Personnel State
 const allUsers = ref([]);
 const availableUsers = ref([]);
 
-// Layout State
 const allZones = ref([]);
 const activeZones = ref([]);
 const lowTrafficZones = ref([]);
+
+// --- NEW VIEWER STATE ---
+const isViewerOpen = ref(false);
+const viewerImageUrl = ref(null);
+const viewerInitials = ref("");
+
+const openAvatarViewer = (user) => {
+  viewerImageUrl.value = user.avatar_url;
+  viewerInitials.value = user.first_name?.charAt(0) || user.username?.charAt(0);
+  isViewerOpen.value = true;
+};
 
 const fetchData = async () => {
   isLoading.value = true;
@@ -343,7 +378,7 @@ const runAlgorithm = async () => {
       availableUserIds: availableUsers.value.map((u) => u.id),
       activeZoneIds: activeZones.value,
       lowTrafficZoneIds: lowTrafficZones.value,
-      scanningOnly: scanningOnly.value, // NEW: Ship the flag to the backend
+      scanningOnly: scanningOnly.value,
     };
 
     const data = await useApiFetch(`/roster/${props.eventId}/generate`, {

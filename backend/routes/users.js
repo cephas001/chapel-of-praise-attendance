@@ -3,6 +3,18 @@ const bcrypt = require("bcrypt");
 const prisma = require("../prismaClient");
 const { authenticateToken, requireSuperAdmin } = require("../middleware/auth");
 const paginate = require("../middleware/paginate");
+const multer = require("multer");
+const { createClient } = require("@supabase/supabase-js");
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY,
+);
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 }, // Limit file size to 5MB
+});
 
 const router = express.Router();
 
@@ -53,6 +65,7 @@ router.get(
             unit: true,
             created_at: true,
             email: true,
+            avatar_url: true,
           },
           orderBy: orderByClause,
         }),
@@ -100,6 +113,7 @@ router.post("/", authenticateToken, requireSuperAdmin, async (req, res) => {
         last_name: newUser.last_name,
         unit: newUser.unit,
         email: newUser.email,
+        avatar_url: null,
       },
     });
   } catch (error) {
@@ -124,6 +138,7 @@ router.get(
           username: true,
           unit: true,
           email: true,
+          avatar_url: true,
         },
         orderBy: {
           username: "asc",
@@ -202,6 +217,7 @@ router.patch("/:id", authenticateToken, requireSuperAdmin, async (req, res) => {
         role: true,
         unit: true,
         email: true,
+        avatar_url: true,
       },
     });
 
@@ -232,5 +248,186 @@ router.delete(
     }
   },
 );
+
+// POST /api/users/profile/avatar
+// Uploads a new avatar to Supabase and updates the user's record
+router.post(
+  "/profile/avatar",
+  authenticateToken,
+  upload.single("avatar"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No image provided" });
+      }
+
+      const userId = req.user.id;
+
+      // 1. SWEEP: Find and delete the old avatar
+      const currentUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { avatar_url: true },
+      });
+
+      if (currentUser && currentUser.avatar_url) {
+        // Extract just the filename from the end of the Supabase URL
+        const oldFileName = currentUser.avatar_url.split("/").pop();
+
+        // Delete the orphaned file from the bucket
+        const { error: deleteError } = await supabase.storage
+          .from("avatars")
+          .remove([oldFileName]);
+
+        if (deleteError) {
+          console.warn(
+            `Failed to delete old avatar for user ${userId}:`,
+            deleteError,
+          );
+          // We don't throw here; we still want to allow the new upload even if the cleanup fails
+        }
+      }
+
+      // 2. KEEP: Upload the new avatar
+      const fileExt = req.file.originalname.split(".").pop();
+      const fileName = `${userId}_${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(fileName, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: false, // We don't need upsert anymore since filenames are strictly unique
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(fileName);
+
+      const avatarUrl = publicUrlData.publicUrl;
+
+      // 3. Update Prisma
+      const updatedUser = await prisma.user.update({
+        where: { id: userId },
+        data: { avatar_url: avatarUrl },
+        select: { id: true, username: true, email: true, avatar_url: true },
+      });
+
+      res.json({ success: true, user: updatedUser });
+    } catch (error) {
+      console.error("Avatar upload failed:", error);
+      res.status(500).json({ error: "Failed to upload profile picture" });
+    }
+  },
+);
+
+// DELETE /api/users/profile/avatar
+// Deletes the file from Supabase and nullifies the avatar_url in Prisma
+router.delete("/profile/avatar", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // 1. Find the user's current avatar
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { avatar_url: true },
+    });
+
+    if (!currentUser || !currentUser.avatar_url) {
+      return res.status(400).json({ error: "No profile picture to remove." });
+    }
+
+    // 2. Extract the filename from the Supabase URL
+    const fileName = currentUser.avatar_url.split("/").pop();
+
+    // 3. Delete the file from the Supabase bucket
+    const { error: deleteError } = await supabase.storage
+      .from("avatars")
+      .remove([fileName]);
+
+    if (deleteError) {
+      console.error(
+        `Failed to delete avatar from bucket for user ${userId}:`,
+        deleteError,
+      );
+      // We log the error, but we will still proceed to clear the DB just in case
+      // the file was already accidentally deleted from the bucket dashboard.
+    }
+
+    // 4. Update the database to remove the URL
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { avatar_url: null },
+      select: { id: true, username: true, email: true, avatar_url: true },
+    });
+
+    res.json({ success: true, user: updatedUser });
+  } catch (error) {
+    console.error("Avatar deletion failed:", error);
+    res.status(500).json({ error: "Failed to remove profile picture" });
+  }
+});
+
+// GET /api/users/profile/stats
+// Fetches the lifetime scans for the logged-in usher
+router.get("/profile/stats", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Note: Adjust 'attendanceRecord' below to match your exact Prisma model name
+    // for scans (it might be 'scan' or 'attendance')
+    const totalScans = await prisma.attendanceRecord.count({
+      where: { usher_id: userId },
+    });
+
+    res.json({ totalScans });
+  } catch (error) {
+    console.error("Failed to fetch stats:", error);
+    res.status(500).json({ error: "Failed to load profile statistics" });
+  }
+});
+
+// PATCH /api/users/profile/password
+// Securely verifies the old password and hashes the new one
+router.patch("/profile/password", authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res
+        .status(400)
+        .json({ error: "Both current and new passwords are required" });
+    }
+
+    // 1. Fetch the user to get their current hash
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    // 2. Verify current password
+    const isValidPassword = await bcrypt.compare(
+      currentPassword,
+      user.password_hash,
+    );
+    if (!isValidPassword) {
+      return res.status(403).json({ error: "Incorrect current password" });
+    }
+
+    // 3. Hash the new password
+    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
+
+    // 4. Update the database
+    await prisma.user.update({
+      where: { id: userId },
+      data: { password_hash: hashedNewPassword },
+    });
+
+    res.json({ success: true, message: "Password updated successfully" });
+  } catch (error) {
+    console.error("Password change failed:", error);
+    res.status(500).json({ error: "Failed to update password" });
+  }
+});
 
 module.exports = router;

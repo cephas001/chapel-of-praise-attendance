@@ -33,42 +33,57 @@
             class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-12 sm:-mt-16 mb-4 sm:mb-2"
           >
             <div class="relative z-10 shrink-0 flex justify-center sm:block">
-              <div
-                class="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white shadow-md bg-white flex items-center justify-center overflow-hidden relative group cursor-pointer transition-transform duration-300 hover:scale-[1.02]"
-                @click="handleAvatarClick"
-              >
-                <img
-                  v-if="avatarPreview || user?.avatar_url"
-                  :src="avatarPreview || user?.avatar_url"
-                  alt="Profile"
-                  class="w-full h-full object-cover"
-                  loading="lazy"
-                />
-                <span
-                  v-else
-                  class="text-3xl font-black text-gray-300 font-montserrat uppercase"
-                >
-                  {{ user?.first_name?.charAt(0) || user?.username?.charAt(0) }}
-                </span>
-
+              <div class="relative inline-block">
                 <div
-                  class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  class="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white shadow-md bg-white flex items-center justify-center overflow-hidden relative group cursor-pointer transition-transform duration-300 hover:scale-[1.02]"
+                  @click="handleAvatarClick"
+                >
+                  <img
+                    v-if="avatarPreview || user?.avatar_url"
+                    :src="avatarPreview || user?.avatar_url"
+                    alt="Profile"
+                    class="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                  <span
+                    v-else
+                    class="text-3xl font-black text-gray-300 font-montserrat uppercase"
+                  >
+                    {{
+                      user?.first_name?.charAt(0) || user?.username?.charAt(0)
+                    }}
+                  </span>
+
+                  <div
+                    class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hidden sm:flex"
+                  >
+                    <Icon
+                      name="material-symbols:photo-camera"
+                      class="text-white text-2xl"
+                    />
+                  </div>
+
+                  <div
+                    v-if="isUploading"
+                    class="absolute inset-0 bg-white/80 flex items-center justify-center z-30"
+                  >
+                    <Icon
+                      name="material-symbols:sync"
+                      class="text-black text-3xl animate-spin"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  @click="handleAvatarClick"
+                  class="absolute bottom-0 right-0 sm:bottom-1 sm:right-1 w-8 h-8 sm:w-9 sm:h-9 bg-white rounded-full border border-gray-200 shadow-md flex items-center justify-center text-black hover:bg-gray-50 hover:scale-105 transition-all z-20"
+                  title="Change Profile Picture"
                 >
                   <Icon
                     name="material-symbols:photo-camera"
-                    class="text-white text-2xl"
+                    class="text-sm sm:text-base"
                   />
-                </div>
-
-                <div
-                  v-if="isUploading"
-                  class="absolute inset-0 bg-white/80 flex items-center justify-center"
-                >
-                  <Icon
-                    name="material-symbols:sync"
-                    class="text-black text-3xl animate-spin"
-                  />
-                </div>
+                </button>
               </div>
 
               <input

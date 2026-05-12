@@ -20,7 +20,7 @@
         class="bg-gray-50 rounded-3xl p-6 sm:p-8 shadow-sm border-2 border-gray-200 flex flex-col sm:flex-row items-center gap-6 sm:gap-8 relative overflow-hidden"
       >
         <div
-          class="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-bl-full -z-0"
+          class="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-bl-full z-0"
         ></div>
 
         <div class="relative z-10 shrink-0">
@@ -71,7 +71,7 @@
           />
         </div>
 
-        <div class="text-center sm:text-left z-10 flex-grow">
+        <div class="text-center sm:text-left z-10 grow">
           <div
             class="flex flex-wrap justify-center sm:justify-start gap-2 mb-3"
           >
@@ -455,8 +455,6 @@ const confirm = useConfirm();
 const router = useRouter();
 const { user, logout } = useAuth();
 const toast = useToast();
-
-console.log(user.value);
 
 // --- NEW PASSWORD STATE ---
 const isPasswordModalOpen = ref(false);

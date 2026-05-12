@@ -2,7 +2,7 @@
   <Teleport to="body">
     <div
       v-if="isOpen"
-      class="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-3xl p-4 animate-fade-in"
+      class="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-3xl p-4 animate-fade-in"
       @click.self="$emit('close')"
     >
       <div class="relative animate-zoom-in flex flex-col items-center gap-4">

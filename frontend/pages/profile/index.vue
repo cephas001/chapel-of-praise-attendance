@@ -11,7 +11,7 @@
             My Profile
           </h1>
           <p class="text-gray-500 font-poppins tracking-wide">
-            Manage your identity and local settings.
+            Manage your local settings.
           </p>
         </div>
       </header>

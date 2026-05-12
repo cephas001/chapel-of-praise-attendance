@@ -247,8 +247,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue";
-import AvatarViewerModal from "~/components/AvatarViewerModal.vue"; // Ensure path matches your structure
+import { ref, onMounted, computed } from "vue"; // Ensure path matches your structure
 
 const props = defineProps({
   eventId: String,

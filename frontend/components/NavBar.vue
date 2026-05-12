@@ -58,6 +58,18 @@
             >
               My Profile
             </NuxtLink>
+
+            <NuxtLink
+              to="/roster"
+              class="font-montserrat text-sm tracking-wide transition-all duration-200 pb-1 border-b-2"
+              :class="
+                $route.path === '/roster'
+                  ? 'font-black text-black border-black'
+                  : 'font-semibold text-gray-500 border-transparent hover:text-black'
+              "
+            >
+              Active Rosters
+            </NuxtLink>
           </div>
 
           <div class="flex items-center gap-2 sm:gap-4">
@@ -184,6 +196,19 @@
           "
         >
           My Profile
+        </NuxtLink>
+
+        <NuxtLink
+          to="/roster"
+          @click="isMobileMenuOpen = false"
+          class="p-4 rounded-xl font-poppins font-bold text-sm tracking-wide transition-all duration-200 flex items-center gap-3 border"
+          :class="
+            $route.path === '/roster'
+              ? 'bg-gray-100 text-black border-gray-200 shadow-inner'
+              : 'text-gray-500 border-transparent hover:bg-gray-50 hover:text-black hover:border-gray-200'
+          "
+        >
+          Active Rosters
         </NuxtLink>
 
         <NuxtLink

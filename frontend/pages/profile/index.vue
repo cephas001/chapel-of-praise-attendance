@@ -91,7 +91,7 @@
           <p class="text-sm text-black font-semibold font-poppins mt-1">
             @{{ user?.username }}
           </p>
-          <p class="text-xs text-gray-600 font-poppins mt-1">
+          <p class="text-xs text-gray-600 font-poppins mt-2">
             {{ user?.email }}
           </p>
         </div>
@@ -192,7 +192,7 @@
           >
             <div class="flex items-center gap-4">
               <div
-                class="w-10 h-10 rounded-full flex items-center justify-center"
+                class="w-10 h-10 rounded-full flex items-center justify-center bg-red-50"
               >
                 <Icon name="material-symbols:logout" class="text-xl" />
               </div>
@@ -298,6 +298,14 @@
         user?.first_name?.charAt(0) || user?.username?.charAt(0)
       "
       @close="isExpandedViewOpen = false"
+    />
+
+    <LazyAvatarCropperModal
+      v-if="rawImageUrl"
+      :isOpen="isCropperOpen"
+      :imageUrl="rawImageUrl"
+      @close="closeCropper"
+      @crop="handleCroppedImage"
     />
 
     <Teleport to="body">
@@ -449,14 +457,13 @@ import { useRouter } from "vue-router";
 import { useAuth } from "~/composables/useAuth";
 import { useToast } from "~/composables/useToast";
 import { useConfirm } from "~/composables/useConfirm";
-import { db } from "~/utils/db"; // Assuming this handles your indexedDB logic
+import { db } from "~/utils/db";
 
 const confirm = useConfirm();
 const router = useRouter();
 const { user, logout } = useAuth();
 const toast = useToast();
 
-// --- NEW PASSWORD STATE ---
 const isPasswordModalOpen = ref(false);
 const isChangingPassword = ref(false);
 const passwordError = ref("");
@@ -466,7 +473,6 @@ const passwordData = ref({
   confirm: "",
 });
 
-// Added state for toggling visibility independently on each field
 const showPassword = ref({
   current: false,
   new: false,
@@ -477,7 +483,6 @@ const closePasswordModal = () => {
   isPasswordModalOpen.value = false;
   passwordError.value = "";
   passwordData.value = { current: "", new: "", confirm: "" };
-  // Reset visibility states when closing the modal
   showPassword.value = { current: false, new: false, confirm: false };
 };
 
@@ -519,6 +524,10 @@ const isUploading = ref(false);
 const isActionMenuOpen = ref(false);
 const isExpandedViewOpen = ref(false);
 
+// --- NEW CROPPER STATE ---
+const isCropperOpen = ref(false);
+const rawImageUrl = ref(null);
+
 const localStats = ref({
   totalScans: 0,
   unsynced: 0,
@@ -543,7 +552,8 @@ const openExpandedView = () => {
   isExpandedViewOpen.value = true;
 };
 
-const handleFileSelect = async (event) => {
+// 1. Intercept file selection and open the cropper
+const handleFileSelect = (event) => {
   const file = event.target.files[0];
   if (!file) return;
 
@@ -552,9 +562,30 @@ const handleFileSelect = async (event) => {
     return;
   }
 
-  avatarPreview.value = URL.createObjectURL(file);
+  // Create a URL for the raw, uncropped image and pass it to the cropper modal
+  rawImageUrl.value = URL.createObjectURL(file);
+  isCropperOpen.value = true;
+
+  // Clear the input so the same file can be selected again if needed
+  if (fileInput.value) fileInput.value.value = "";
+};
+
+const closeCropper = () => {
+  isCropperOpen.value = false;
+  rawImageUrl.value = null;
+};
+
+// 2. Receive the cropped blob and upload it
+const handleCroppedImage = async (blob) => {
+  closeCropper(); // Close the modal immediately
+
+  // Create an instant preview of the cropped result
+  avatarPreview.value = URL.createObjectURL(blob);
+
   const formData = new FormData();
-  formData.append("avatar", file);
+  // Append the blob, providing a generic filename so multer picks it up
+  formData.append("avatar", blob, "avatar.jpg");
+
   isUploading.value = true;
 
   try {
@@ -573,7 +604,6 @@ const handleFileSelect = async (event) => {
     toast.error("Failed to upload image. Please check your connection.");
   } finally {
     isUploading.value = false;
-    if (fileInput.value) fileInput.value.value = "";
   }
 };
 

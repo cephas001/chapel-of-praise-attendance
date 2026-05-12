@@ -32,138 +32,17 @@
 
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <div class="lg:col-span-7 flex flex-col gap-6 order-1">
-          <section
-            class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col transition-all duration-300"
-          >
-            <button
-              @click="isRegistryOpen = !isRegistryOpen"
-              class="w-full p-6 sm:p-8 flex justify-between items-center bg-white hover:bg-gray-50 transition-colors focus:outline-none"
-            >
-              <div class="flex items-center gap-3">
-                <h2
-                  class="text-md font-black font-poppins flex items-center gap-2 m-0"
-                >
-                  <Icon
-                    name="material-symbols:event-list"
-                    class="text-lg text-black"
-                  />
-                  Event Registry
-                  <Icon
-                    v-if="isLoadingEvents"
-                    name="material-symbols:sync"
-                    class="animate-spin text-gray-400 ml-1"
-                  />
-                </h2>
-                <span
-                  class="bg-gray-100 text-[10px] font-bold font-poppins px-2 py-0.5 rounded-md uppercase tracking-widest text-gray-500 border border-gray-200"
-                >
-                  {{ allEvents.length }} Total
-                </span>
-              </div>
-              <div
-                class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center transition-transform duration-300"
-                :class="{ 'rotate-180': isRegistryOpen }"
-              >
-                <Icon
-                  name="material-symbols:keyboard-arrow-down"
-                  class="text-xl text-black"
-                />
-              </div>
-            </button>
-
-            <Transition name="accordion">
-              <div v-show="isRegistryOpen">
-                <div
-                  class="border-t border-gray-100 max-h-[500px] overflow-y-auto custom-scrollbar bg-gray-50/30"
-                >
-                  <div
-                    v-if="allEvents.length === 0"
-                    class="p-8 text-center text-gray-500 font-medium text-sm"
-                  >
-                    {{
-                      isLoadingEvents
-                        ? "Loading events..."
-                        : "No events have been created yet."
-                    }}
-                  </div>
-                  <div v-else class="divide-y divide-gray-100">
-                    <button
-                      v-for="event in allEvents"
-                      :key="event.id"
-                      @click="selectEvent(event)"
-                      class="w-full p-5 sm:p-6 flex items-center justify-between group transition-all duration-200 cursor-pointer border-l-4 text-left"
-                      :class="
-                        selectedEvent?.id === event.id
-                          ? 'border-black bg-gray-100/80 shadow-inner'
-                          : 'border-transparent bg-white hover:bg-gray-50 hover:border-gray-300'
-                      "
-                    >
-                      <div class="flex items-center gap-4">
-                        <div
-                          class="h-10 w-10 sm:h-12 sm:w-12 rounded-xl flex items-center justify-center transition-colors"
-                          :class="
-                            selectedEvent?.id === event.id
-                              ? 'bg-black text-white shadow-md'
-                              : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200 group-hover:text-black'
-                          "
-                        >
-                          <Icon
-                            name="material-symbols:stadium"
-                            class="text-xl sm:text-2xl"
-                          />
-                        </div>
-                        <div>
-                          <h4
-                            class="font-bold font-poppins leading-tight text-sm sm:text-base transition-colors"
-                            :class="
-                              selectedEvent?.id === event.id
-                                ? 'text-black'
-                                : 'text-gray-900 group-hover:text-black'
-                            "
-                          >
-                            {{ event.name }}
-                          </h4>
-                          <p
-                            class="text-xs sm:text-sm text-gray-500 font-medium mt-0.5"
-                          >
-                            {{ new Date(event.date).toLocaleDateString() }}
-                          </p>
-                        </div>
-                      </div>
-                      <div class="flex items-center gap-3">
-                        <span
-                          class="px-2.5 py-1 rounded-md text-[10px] sm:text-xs font-bold font-poppins uppercase tracking-wider border hidden sm:block"
-                          :class="[
-                            event.status.includes('ACTIVE')
-                              ? 'bg-green-50 text-green-700 border-green-200'
-                              : '',
-                            event.status === 'SYNCING_PHASE'
-                              ? 'bg-orange-50 text-orange-700 border-orange-200'
-                              : '',
-                          ]"
-                        >
-                          {{
-                            event.status
-                              .replace("_ACTIVE", "")
-                              .replace("_", " ")
-                          }}
-                        </span>
-                        <Icon
-                          name="material-symbols:chevron-right"
-                          class="text-xl transition-colors"
-                          :class="
-                            selectedEvent?.id === event.id
-                              ? 'text-black'
-                              : 'text-gray-300 group-hover:text-black'
-                          "
-                        />
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </Transition>
-          </section>
+          <EventSelector
+            title="Event Registry"
+            emptyMessage="No events have been created yet."
+            :events="allEvents"
+            :selectedId="selectedEvent?.id"
+            :isLoading="isLoadingEvents"
+            :showStatus="true"
+            :showTotal="true"
+            v-model:isOpen="isRegistryOpen"
+            @select="(event) => selectEvent(event)"
+          />
 
           <div v-if="selectedEvent" class="flex flex-col gap-6 animate-fade-in">
             <div
@@ -461,33 +340,6 @@ const handleEventDelete = async (id, callback) => {
 </script>
 
 <style scoped>
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: #e5e7eb;
-  border-radius: 10px;
-}
-.custom-scrollbar:hover::-webkit-scrollbar-thumb {
-  background-color: #d1d5db;
-}
-
-/* Accordion & Fade Animations */
-.accordion-enter-active,
-.accordion-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  max-height: 800px;
-  opacity: 1;
-  overflow: hidden;
-}
-.accordion-enter-from,
-.accordion-leave-to {
-  max-height: 0;
-  opacity: 0;
-}
 .animate-fade-in {
   animation: fadeIn 0.4s ease-out forwards;
 }

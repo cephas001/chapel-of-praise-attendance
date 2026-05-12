@@ -231,11 +231,13 @@
           class="flex items-center justify-between bg-white border border-gray-200 p-3 rounded-xl shadow-sm"
         >
           <div class="flex items-center gap-3 overflow-hidden">
-            <div
+            <NuxtLink
               class="h-10 w-10 shrink-0 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 border border-gray-200"
+              to="/profile"
+              @click="isMobileMenuOpen = false"
             >
               <Icon name="material-symbols:person" class="text-xl" />
-            </div>
+            </NuxtLink>
             <div class="flex flex-col truncate">
               <span
                 class="text-sm font-black text-black font-poppins truncate"

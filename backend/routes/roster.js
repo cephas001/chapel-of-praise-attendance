@@ -336,24 +336,19 @@ router.get("/:eventId/my-duty", authenticateToken, async (req, res) => {
 // ==========================================
 // GET ENTIRE ROSTER FOR SUPER ADMIN
 // ==========================================
-router.get(
-  "/:eventId",
-  authenticateToken,
-  requireSuperAdmin,
-  async (req, res) => {
-    try {
-      const { eventId } = req.params;
-      const assignments = await prisma.assignment.findMany({
-        where: { event_id: eventId },
-        include: { user: true }, // Crucial: Includes the user data for the Review UI
-        orderBy: [{ task_type: "asc" }, { is_primary: "desc" }],
-      });
-      res.json(assignments);
-    } catch (error) {
-      console.error("Fetch Roster Error:", error);
-      res.status(500).json({ error: "Failed to fetch roster." });
-    }
-  },
-);
+router.get("/:eventId", authenticateToken, async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const assignments = await prisma.assignment.findMany({
+      where: { event_id: eventId },
+      include: { user: true }, // Crucial: Includes the user data for the Review UI
+      orderBy: [{ task_type: "asc" }, { is_primary: "desc" }],
+    });
+    res.json(assignments);
+  } catch (error) {
+    console.error("Fetch Roster Error:", error);
+    res.status(500).json({ error: "Failed to fetch roster." });
+  }
+});
 
 module.exports = router;

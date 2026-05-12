@@ -3,25 +3,24 @@
     class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mt-8 animate-fade-in"
   >
     <div
-      class="p-6 sm:p-8 border-b border-gray-100 flex justify-between items-center bg-green-50"
+      class="p-6 sm:p-8 border-b border-gray-100 flex justify-between items-center"
+      :class="isReadonly ? 'bg-blue-50' : 'bg-green-50'"
     >
       <div>
         <h2
           class="text-lg font-black font-poppins flex items-center justify-between gap-2 text-black w-full"
         >
-          <div class="flex items-center gap-1">
+          <div class="flex items-center gap-2">
             <Icon
               :name="
                 isReadonly
-                  ? 'material-symbols:check-circle'
+                  ? 'material-symbols:group'
                   : 'material-symbols:fact-check'
               "
               class="text-xl"
             />
             {{
-              isReadonly
-                ? "Active Roster Overview"
-                : "Roster Proposal Generated"
+              isReadonly ? "Active Event Roster" : "Roster Proposal Generated"
             }}
           </div>
           <button
@@ -45,7 +44,7 @@
     </div>
 
     <div
-      v-if="proposal.warnings && proposal.warnings.length > 0"
+      v-if="proposal.warnings && proposal.warnings.length > 0 && !isReadonly"
       class="p-4 bg-orange-50 border-b border-orange-100 flex flex-col gap-2"
     >
       <div
@@ -104,13 +103,40 @@
             class="hover:bg-gray-50/50 transition-colors"
           >
             <td class="p-4">
-              <span class="font-bold text-sm font-poppins text-black block">{{
-                user.username
-              }}</span>
-              <span
-                class="text-[10px] font-bold text-gray-400 uppercase tracking-widest"
-                >{{ user.unit }}</span
-              >
+              <div class="flex items-center gap-3">
+                <div
+                  class="w-8 h-8 rounded-full border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all"
+                  @click="openAvatarViewer(user)"
+                >
+                  <img
+                    v-if="user.avatar_url"
+                    :src="user.avatar_url"
+                    loading="lazy"
+                    alt="Avatar"
+                    class="w-full h-full object-cover"
+                  />
+                  <span
+                    v-else
+                    class="text-xs font-bold text-gray-400 uppercase"
+                  >
+                    {{
+                      user.first_name?.charAt(0) ||
+                      user.username?.charAt(0) ||
+                      "U"
+                    }}
+                  </span>
+                </div>
+                <div>
+                  <span class="font-bold text-sm font-poppins text-black block">
+                    {{ user.username }}
+                  </span>
+                  <span
+                    class="text-[10px] font-bold text-gray-400 uppercase tracking-widest"
+                  >
+                    {{ user.unit }}
+                  </span>
+                </div>
+              </div>
             </td>
             <td class="p-4">
               <div class="flex flex-col gap-1 items-start">
@@ -225,12 +251,19 @@
 
       <span
         v-else
-        class="text-xs font-bold text-green-700 uppercase tracking-widest flex items-center gap-1.5 px-3 py-1.5 bg-green-100 rounded-lg border border-green-200 shadow-sm"
+        class="text-xs font-bold text-blue-700 uppercase tracking-widest flex items-center gap-1.5 px-3 py-1.5 bg-blue-100 rounded-lg border border-blue-200 shadow-sm"
       >
-        <Icon name="material-symbols:check-circle" class="text-lg" />
-        Published
+        <Icon name="material-symbols:visibility" class="text-lg" />
+        Live Roster
       </span>
     </div>
+
+    <AvatarViewerModal
+      :is-open="isViewerOpen"
+      :image-url="viewerImageUrl"
+      :fallback-initials="viewerInitials"
+      @close="isViewerOpen = false"
+    />
   </div>
 </template>
 
@@ -240,37 +273,47 @@ import { useToast } from "~/composables/useToast";
 
 const props = defineProps({
   eventId: String,
-  proposal: Object, // The entire payload emitted from the Setup component
-  isReadonly: { type: Boolean, default: false }, // If true, hides the Publish button and disables interactions
+  proposal: Object,
+  isReadonly: { type: Boolean, default: false },
 });
 
 const emit = defineEmits(["published", "discard"]);
 const toast = useToast();
 const isPublishing = ref(false);
 
-// State for filtering and pagination
 const searchQuery = ref("");
 const sortOrder = ref("name_asc");
 const currentPage = ref(1);
 const itemsPerPage = 20;
 
-// Reset pagination when search query changes
+// --- NEW VIEWER STATE ---
+const isViewerOpen = ref(false);
+const viewerImageUrl = ref(null);
+const viewerInitials = ref("");
+
+const openAvatarViewer = (user) => {
+  viewerImageUrl.value = user.avatar_url;
+  viewerInitials.value =
+    user.first_name?.charAt(0) || user.username?.charAt(0) || "U";
+  isViewerOpen.value = true;
+};
+
 watch(searchQuery, () => {
   currentPage.value = 1;
 });
 
-// Group the flat array of assignments by User so it looks clean in the table
 const groupedAssignments = computed(() => {
   if (!props.proposal || !props.proposal.proposedAssignments) return [];
 
   const userMap = {};
 
   props.proposal.proposedAssignments.forEach((assignment) => {
-    // Added a small failsafe here in case the DB fetch returns without nested user object temporarily
     const userId = assignment.user_id;
     const userData = assignment.user || {
       username: "Unknown",
       unit: "Unknown",
+      avatar_url: null,
+      first_name: null,
     };
 
     if (!userMap[userId]) {
@@ -278,12 +321,13 @@ const groupedAssignments = computed(() => {
         id: userId,
         username: userData.username,
         unit: userData.unit,
+        avatar_url: userData.avatar_url, // NEW: Capture Avatar Data
+        first_name: userData.first_name, // NEW: Capture First Name for fallback
         primaryTasks: [],
         secondaryTasks: [],
       };
     }
 
-    // Clean up the object to pass to the UI
     const taskObj = {
       zone_name: assignment.zone_name,
       task_type: assignment.task_type,
@@ -299,11 +343,9 @@ const groupedAssignments = computed(() => {
   return Object.values(userMap);
 });
 
-// NEW: Compute the filtered, sorted, and paginated list
 const paginatedAndFilteredAssignments = computed(() => {
   let result = [...groupedAssignments.value];
 
-  // 1. Filter
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase();
     result = result.filter(
@@ -313,14 +355,12 @@ const paginatedAndFilteredAssignments = computed(() => {
     );
   }
 
-  // 2. Sort
   result.sort((a, b) => {
     if (sortOrder.value === "name_asc") {
       return a.username.localeCompare(b.username);
     } else if (sortOrder.value === "name_desc") {
       return b.username.localeCompare(a.username);
     } else if (sortOrder.value === "unit") {
-      // Sort by unit first, then by name within the unit
       const unitCompare = a.unit.localeCompare(b.unit);
       if (unitCompare !== 0) return unitCompare;
       return a.username.localeCompare(b.username);
@@ -328,7 +368,6 @@ const paginatedAndFilteredAssignments = computed(() => {
     return 0;
   });
 
-  // 3. Paginate
   const start = (currentPage.value - 1) * itemsPerPage;
   const end = start + itemsPerPage;
   return result.slice(start, end);
@@ -356,7 +395,7 @@ const publishRoster = async () => {
     });
 
     toast.success("Roster successfully published to the database!");
-    emit("published"); // Tell parent to clear the view
+    emit("published");
   } catch (error) {
     toast.error("Failed to publish roster.");
     console.error(error);

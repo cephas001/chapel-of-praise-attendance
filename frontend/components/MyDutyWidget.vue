@@ -15,7 +15,7 @@
           My Duty Post
         </h2>
         <p class="text-xs font-medium text-gray-500 font-poppins">
-          Your official assignment for this service
+          Your official assignment for this event
         </p>
       </div>
     </div>
@@ -41,7 +41,7 @@
         </h3>
         <p class="text-xs text-gray-500 mt-1 max-w-xs mx-auto">
           You have not been assigned a specific primary duty for this event.
-          Please assist where needed or take a well-deserved rest!
+          Please assist where needed.
         </p>
       </div>
 

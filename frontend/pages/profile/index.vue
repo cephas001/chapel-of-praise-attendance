@@ -17,83 +17,105 @@
       </header>
 
       <section
-        class="bg-gray-50 rounded-3xl p-6 sm:p-8 shadow-sm border-2 border-gray-200 flex flex-col sm:flex-row items-center gap-6 sm:gap-8 relative overflow-hidden"
+        class="bg-white rounded-3xl border border-gray-200 shadow-sm relative overflow-hidden flex flex-col"
       >
-        <div
-          class="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-bl-full z-0"
-        ></div>
-
-        <div class="relative z-10 shrink-0">
+        <div class="h-24 sm:h-32 bg-black relative overflow-hidden">
           <div
-            class="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-white shadow-md bg-gray-100 flex items-center justify-center overflow-hidden relative group cursor-pointer"
-            @click="handleAvatarClick"
-          >
-            <img
-              v-if="avatarPreview || user?.avatar_url"
-              :src="avatarPreview || user?.avatar_url"
-              alt="Profile"
-              class="w-full h-full object-cover"
-              loading="lazy"
-            />
-            <span
-              v-else
-              class="text-3xl font-black text-gray-300 font-montserrat uppercase"
-            >
-              {{ user?.first_name?.charAt(0) || user?.username?.charAt(0) }}
-            </span>
-
-            <div
-              class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-            >
-              <Icon
-                name="material-symbols:photo-camera"
-                class="text-white text-2xl"
-              />
-            </div>
-
-            <div
-              v-if="isUploading"
-              class="absolute inset-0 bg-white/80 flex items-center justify-center"
-            >
-              <Icon
-                name="material-symbols:sync"
-                class="text-black text-3xl animate-spin"
-              />
-            </div>
-          </div>
-
-          <input
-            type="file"
-            ref="fileInput"
-            accept="image/jpeg, image/png, image/webp"
-            class="hidden"
-            @change="handleFileSelect"
-          />
+            class="absolute -top-24 -right-12 w-64 h-64 bg-white/5 rounded-full blur-2xl pointer-events-none"
+          ></div>
+          <div
+            class="absolute bottom-0 left-0 w-full h-1/2 bg-gradient-to-t from-black/40 to-transparent pointer-events-none"
+          ></div>
         </div>
 
-        <div class="text-center sm:text-left z-10 grow">
+        <div class="px-6 pb-6 sm:px-8 sm:pb-8 relative">
           <div
-            class="flex flex-wrap justify-center sm:justify-start gap-2 mb-3"
+            class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-12 sm:-mt-16 mb-4 sm:mb-2"
           >
-            <span
-              class="px-2.5 py-1 bg-black text-white text-[10px] font-bold uppercase tracking-widest rounded-md flex items-center"
-            >
-              {{ user?.unit?.replace("_", " ") || "UNIT" }}
-            </span>
+            <div class="relative z-10 shrink-0 flex justify-center sm:block">
+              <div
+                class="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-white shadow-md bg-white flex items-center justify-center overflow-hidden relative group cursor-pointer transition-transform duration-300 hover:scale-[1.02]"
+                @click="handleAvatarClick"
+              >
+                <img
+                  v-if="avatarPreview || user?.avatar_url"
+                  :src="avatarPreview || user?.avatar_url"
+                  alt="Profile"
+                  class="w-full h-full object-cover"
+                  loading="lazy"
+                />
+                <span
+                  v-else
+                  class="text-3xl font-black text-gray-300 font-montserrat uppercase"
+                >
+                  {{ user?.first_name?.charAt(0) || user?.username?.charAt(0) }}
+                </span>
+
+                <div
+                  class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Icon
+                    name="material-symbols:photo-camera"
+                    class="text-white text-2xl"
+                  />
+                </div>
+
+                <div
+                  v-if="isUploading"
+                  class="absolute inset-0 bg-white/80 flex items-center justify-center"
+                >
+                  <Icon
+                    name="material-symbols:sync"
+                    class="text-black text-3xl animate-spin"
+                  />
+                </div>
+              </div>
+
+              <input
+                type="file"
+                ref="fileInput"
+                accept="image/jpeg, image/png, image/webp"
+                class="hidden"
+                @change="handleFileSelect"
+              />
+            </div>
+
+            <div class="flex justify-center sm:justify-end pb-1">
+              <span
+                class="px-4 py-1.5 bg-gray-50 text-black text-[10px] font-bold uppercase tracking-widest rounded-lg border border-gray-200 shadow-sm flex items-center gap-1.5"
+              >
+                <Icon
+                  name="material-symbols:shield-person"
+                  class="text-sm text-gray-400"
+                />
+                {{ user?.unit?.replace("_", " ") || "UNIT" }}
+              </span>
+            </div>
           </div>
 
-          <h2
-            class="text-xl font-black font-montserrat text-black uppercase"
-            v-if="user?.first_name"
-          >
-            {{ user?.first_name }} {{ user?.last_name }}
-          </h2>
-          <p class="text-sm text-black font-semibold font-poppins mt-1">
-            @{{ user?.username }}
-          </p>
-          <p class="text-xs text-gray-600 font-poppins mt-2">
-            {{ user?.email }}
-          </p>
+          <div class="text-center sm:text-left z-10 mt-2">
+            <h2
+              class="text-2xl sm:text-3xl font-black font-montserrat text-black uppercase tracking-tight"
+              v-if="user?.first_name"
+            >
+              {{ user?.first_name }} {{ user?.last_name }}
+            </h2>
+
+            <div
+              class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-1.5"
+            >
+              <p class="text-sm font-bold text-gray-900 font-poppins">
+                @{{ user?.username }}
+              </p>
+              <span class="hidden sm:block text-gray-300">•</span>
+              <p
+                class="text-sm text-gray-500 font-poppins flex items-center justify-center sm:justify-start gap-1.5 mt-0.5 sm:mt-0"
+              >
+                <Icon name="material-symbols:mail-outline" class="text-base" />
+                {{ user?.email }}
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -112,7 +134,7 @@
             <p
               class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-1"
             >
-              Lifetime Scans
+              Total Scans
             </p>
           </div>
         </div>

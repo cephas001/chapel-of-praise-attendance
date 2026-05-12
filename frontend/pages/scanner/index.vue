@@ -46,118 +46,28 @@
       <div
         class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start font-poppins"
       >
-        <div class="lg:col-span-4 space-y-6">
-          <div
-            class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-          >
-            <h3
-              class="text-sm font-bold uppercase tracking-widest font-montserrat text-black mb-6"
-            >
-              Select Event
-            </h3>
-            <div
-              v-if="activeEvents.length === 0"
-              class="text-sm text-gray-400 text-center py-6 bg-gray-50 border border-dashed rounded-xl"
-            >
-              {{
-                isLoadingEvents
-                  ? "Loading events..."
-                  : "No active events found."
-              }}
-            </div>
-            <div v-else class="space-y-2">
-              <button
-                v-for="event in activeEvents"
-                :key="event.id"
-                @click="selectEvent(event.id)"
-                class="w-full justify-between p-4 rounded-xl text-left border hover:bg-gray-50 flex items-center"
-                :class="
-                  selectedEventId === event.id
-                    ? 'bg-gray-50 border-black shadow-sm'
-                    : 'border-transparent'
-                "
-              >
-                <div class="flex flex-col">
-                  <span class="text-sm text-black">{{ event.name }}</span>
-                  <span class="text-xs text-gray-500 mt-0.5">{{
-                    new Date(event.date).toLocaleDateString()
-                  }}</span>
-                </div>
-                <Icon
-                  :name="
-                    selectedEventId === event.id
-                      ? 'material-symbols:check-circle'
-                      : 'material-symbols:arrow-forward'
-                  "
-                  class="text-2xl"
-                  :class="
-                    selectedEventId === event.id
-                      ? 'text-black'
-                      : 'text-gray-300'
-                  "
-                />
-              </button>
-            </div>
-          </div>
+        <div class="lg:col-span-5 flex flex-col gap-6 order-1">
+          <EventSelector
+            :events="activeEvents"
+            :selectedId="selectedEventId"
+            :isLoading="isLoadingEvents"
+            v-model:isOpen="isRegistryOpen"
+            @select="(event) => selectEvent(event.id)"
+          />
 
-          <div
-            class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100"
-          >
-            <div class="flex justify-between items-center mb-4">
-              <span
-                class="text-xs font-bold text-gray-400 uppercase tracking-widest"
-                >Local Queue</span
-              >
-              <span
-                v-if="isSyncing"
-                class="text-[10px] font-bold text-blue-600 uppercase tracking-widest animate-pulse flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-md"
-              >
-                <Icon
-                  name="material-symbols:sync"
-                  class="text-sm animate-spin"
-                />
-                Syncing
-              </span>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div class="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                <p class="text-2xl font-black text-black font-montserrat">
-                  {{ unsyncedQueue.length }}
-                </p>
-                <p
-                  class="text-[10px] font-bold text-gray-500 uppercase tracking-wide mt-1"
-                >
-                  Pending
-                </p>
-              </div>
-
-              <button
-                @click="viewRejections"
-                class="p-4 bg-gray-50 rounded-xl border border-gray-100 text-left hover:bg-red-50/50 transition-colors group relative"
-              >
-                <p class="text-2xl font-black text-red-600 font-montserrat">
-                  {{ syncErrors.length }}
-                </p>
-                <div class="flex items-center justify-between mt-1">
-                  <p
-                    class="text-[10px] font-bold text-gray-500 uppercase tracking-wide"
-                  >
-                    Rejections
-                  </p>
-                  <Icon
-                    name="material-symbols:chevron-right"
-                    class="text-gray-400 group-hover:text-red-600 transition-colors text-lg"
-                  />
-                </div>
-              </button>
-            </div>
-          </div>
+          <QueueSummaryWidget
+            class="hidden lg:block"
+            :pendingCount="unsyncedQueue.length"
+            :rejectedCount="syncErrors.length"
+            :isSyncing="isSyncing"
+            @viewRejections="viewRejections"
+          />
         </div>
 
-        <div class="lg:col-span-8 space-y-6">
+        <div class="lg:col-span-7 space-y-6 order-2">
           <div
             v-if="!selectedEventId"
-            class="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm flex flex-col items-center justify-center text-center h-75"
+            class="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm flex flex-col items-center justify-center text-center h-full min-h-[400px]"
           >
             <div
               class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-400"
@@ -173,211 +83,261 @@
           </div>
 
           <template v-else>
-            <MyDutyWidget :eventId="selectedEventId" />
-
-            <div
-              v-if="eventStatus === 'SYNCING_PHASE'"
-              class="bg-orange-50 border border-orange-200 rounded-2xl p-10 text-center shadow-sm flex flex-col items-center"
-            >
-              <div class="bg-orange-100 text-orange-700 p-4 rounded-full mb-6">
-                <Icon
-                  name="material-symbols:sync"
-                  class="text-3xl animate-spin"
-                />
-              </div>
-              <h2
-                class="text-2xl font-black text-orange-900 font-montserrat mb-2"
-              >
-                {{ selectedEventName }}
-              </h2>
-              <h3
-                class="text-sm font-bold text-orange-800 mb-4 uppercase tracking-widest"
-              >
-                Syncing in Progress
-              </h3>
-              <p class="text-sm text-orange-700 max-w-md">
-                The system is synchronizing all devices. Scanning is temporarily
-                disabled.
-              </p>
-            </div>
-
-            <div
-              v-else-if="!isUnlocked"
-              class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
-            >
+            <div class="flex flex-col gap-6 animate-fade-in">
               <div
-                class="bg-gray-900 text-white p-8 sm:p-12 text-center border-b border-gray-800"
+                class="bg-black text-white p-6 sm:p-8 rounded-2xl flex justify-between items-center shadow-lg border border-gray-800"
+              >
+                <div>
+                  <p
+                    class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1 flex items-center gap-1.5"
+                  >
+                    <span
+                      class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"
+                    ></span>
+                    Active Scanner
+                  </p>
+                  <h3
+                    class="text-xl sm:text-2xl font-black font-poppins tracking-tight"
+                  >
+                    {{ selectedEventName }}
+                  </h3>
+                </div>
+                <button
+                  @click="clearSelection"
+                  class="w-10 h-10 bg-gray-800 hover:bg-gray-700 rounded-full flex items-center justify-center transition-colors border border-gray-700"
+                  title="Close Scanner"
+                >
+                  <Icon name="material-symbols:close" class="text-lg" />
+                </button>
+              </div>
+
+              <MyDutyWidget :eventId="selectedEventId" />
+
+              <QueueSummaryWidget
+                class="block lg:hidden"
+                :pendingCount="unsyncedQueue.length"
+                :rejectedCount="syncErrors.length"
+                :isSyncing="isSyncing"
+                @viewRejections="viewRejections"
+              />
+
+              <div
+                v-if="eventStatus === 'SYNCING_PHASE'"
+                class="bg-orange-50 border border-orange-200 rounded-2xl p-10 text-center shadow-sm flex flex-col items-center"
               >
                 <div
-                  class="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner text-gray-400"
+                  class="bg-orange-100 text-orange-700 p-4 rounded-full mb-6"
                 >
-                  <Icon name="material-symbols:lock" class="text-3xl" />
+                  <Icon
+                    name="material-symbols:sync"
+                    class="text-3xl animate-spin"
+                  />
                 </div>
-                <h2 class="text-2xl font-black font-montserrat mb-2">
-                  Venue Lock Active
+                <h2
+                  class="text-2xl font-black text-orange-900 font-montserrat mb-2"
+                >
+                  {{ selectedEventName }}
                 </h2>
-                <p class="text-sm text-gray-400 font-medium max-w-sm mx-auto">
-                  You must be physically present with the Super Admin to unlock
-                  this event. Scan their QR code or enter the manual PIN.
+                <h3
+                  class="text-sm font-bold text-orange-800 mb-4 uppercase tracking-widest"
+                >
+                  Syncing in Progress
+                </h3>
+                <p class="text-sm text-orange-700 max-w-md">
+                  The system is synchronizing all devices. Scanning is
+                  temporarily disabled.
                 </p>
               </div>
 
-              <ScannerCamera
-                :forceStop="forceKillCamera"
-                @scanned="submitUnlock"
-                @cameraStateChanged="isCameraActive = $event"
-              />
-
-              <div class="p-6 sm:p-8 bg-gray-50 border-t border-gray-100">
-                <form
-                  @submit.prevent="submitUnlock()"
-                  class="flex flex-col sm:flex-row gap-4 max-w-md mx-auto"
-                >
-                  <input
-                    v-model="unlockPin"
-                    type="text"
-                    placeholder="Enter 6-Digit PIN"
-                    class="grow border-gray-300 focus:border-black border rounded-xl py-3 px-4 text-center sm:text-left text-black font-poppins uppercase tracking-widest font-bold outline-none"
-                    maxlength="6"
-                  />
-                  <button
-                    type="submit"
-                    :disabled="isUnlocking || unlockPin.length < 5"
-                    class="px-8 py-3 bg-black text-white font-bold rounded-xl hover:bg-gray-800 transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    <Icon
-                      v-if="isUnlocking"
-                      name="material-symbols:sync"
-                      class="animate-spin text-lg"
-                    />
-                    <Icon v-else name="material-symbols:key" class="text-lg" />
-                    Unlock
-                  </button>
-                </form>
-              </div>
-            </div>
-
-            <template v-else>
               <div
-                v-if="
-                  eventStatus === 'SIGN_IN_ACTIVE' ||
-                  eventStatus === 'SIGN_OUT_ACTIVE'
-                "
-                class="bg-white rounded-2xl shadow-sm border border-gray-100"
+                v-else-if="!isUnlocked"
+                class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
               >
+                <div
+                  class="bg-gray-900 text-white p-8 sm:p-12 text-center border-b border-gray-800"
+                >
+                  <div
+                    class="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner text-gray-400"
+                  >
+                    <Icon name="material-symbols:lock" class="text-3xl" />
+                  </div>
+                  <h2 class="text-2xl font-black font-montserrat mb-2">
+                    Venue Lock Active
+                  </h2>
+                  <p class="text-sm text-gray-400 font-medium max-w-sm mx-auto">
+                    You must be physically present with the Super Admin to
+                    unlock this event. Scan their QR code or enter the manual
+                    PIN.
+                  </p>
+                </div>
+
                 <ScannerCamera
                   :forceStop="forceKillCamera"
-                  @scanned="handleScan"
+                  @scanned="submitUnlock"
                   @cameraStateChanged="isCameraActive = $event"
                 />
 
-                <div class="p-6 sm:p-8">
-                  <div
-                    class="flex flex-col md:flex-row md:items-center justify-between gap-6"
+                <div class="p-6 sm:p-8 bg-gray-50 border-t border-gray-100">
+                  <form
+                    @submit.prevent="submitUnlock()"
+                    class="flex flex-col sm:flex-row gap-4 max-w-md mx-auto"
                   >
-                    <div>
-                      <h2 class="text-xl font-bold text-black font-montserrat">
-                        {{ selectedEventName }}
-                      </h2>
-                      <p class="text-sm text-gray-500 mt-1">
-                        Phase:
-                        <span class="font-bold text-black">{{
-                          eventStatus.replace("_ACTIVE", "").replace("_", " ")
-                        }}</span>
-                      </p>
-                    </div>
-                    <div
-                      class="px-4 py-2 bg-gray-50 rounded-lg text-xs font-bold text-gray-500 uppercase tracking-widest border border-gray-200 flex items-center gap-2"
-                    >
-                      <span
-                        class="w-2 h-2 rounded-full"
-                        :class="
-                          isCameraActive
-                            ? 'bg-green-500 animate-pulse'
-                            : 'bg-gray-400'
-                        "
-                      ></span>
-                      {{ isCameraActive ? "Scanning..." : "Standing By" }}
-                    </div>
-                  </div>
-
-                  <div
-                    v-if="scannedMatric || scanWarning"
-                    class="mt-5 animate-fade-in flex"
-                  >
-                    <div
-                      class="flex items-center gap-2.5 px-4 py-2 rounded-lg border text-xs font-semibold tracking-wide font-poppins"
-                      :class="
-                        scanWarning
-                          ? 'bg-red-50 border-red-200 text-red-800'
-                          : 'bg-black border-black text-white shadow-sm'
-                      "
+                    <input
+                      v-model="unlockPin"
+                      type="text"
+                      placeholder="Enter 6-Digit PIN"
+                      class="grow border-gray-300 focus:border-black border rounded-xl py-3 px-4 text-center sm:text-left text-black font-poppins uppercase tracking-widest font-bold outline-none"
+                      maxlength="6"
+                    />
+                    <button
+                      type="submit"
+                      :disabled="isUnlocking || unlockPin.length < 5"
+                      class="px-8 py-3 bg-black text-white font-bold rounded-xl hover:bg-gray-800 transition-all uppercase tracking-widest text-xs flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       <Icon
-                        :name="
-                          scanWarning
-                            ? 'material-symbols:error'
-                            : 'material-symbols:check-circle'
-                        "
-                        class="text-base shrink-0"
-                        :class="scanWarning ? 'text-red-500' : 'text-green-400'"
+                        v-if="isUnlocking"
+                        name="material-symbols:sync"
+                        class="animate-spin text-lg"
                       />
-                      <span class="truncate">
-                        <span
-                          v-if="!scanWarning"
-                          class="text-gray-400 font-normal mr-1"
-                          >Logged:</span
-                        >
-                        {{ scanWarning ? scanWarning : scannedMatric }}
-                      </span>
-                    </div>
-                  </div>
+                      <Icon
+                        v-else
+                        name="material-symbols:key"
+                        class="text-lg"
+                      />
+                      Unlock
+                    </button>
+                  </form>
                 </div>
               </div>
 
-              <div
-                class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100"
-              >
-                <div class="flex items-center gap-3 mb-6">
-                  <div
-                    class="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200 text-black"
-                  >
-                    <Icon name="material-symbols:keyboard" class="text-2xl" />
-                  </div>
-                  <div>
-                    <h3
-                      class="text-sm font-bold uppercase tracking-widest text-black"
+              <template v-else>
+                <div
+                  v-if="
+                    eventStatus === 'SIGN_IN_ACTIVE' ||
+                    eventStatus === 'SIGN_OUT_ACTIVE'
+                  "
+                  class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+                >
+                  <ScannerCamera
+                    :forceStop="forceKillCamera"
+                    @scanned="handleScan"
+                    @cameraStateChanged="isCameraActive = $event"
+                  />
+
+                  <div class="p-6 sm:p-8">
+                    <div
+                      class="flex flex-col md:flex-row md:items-center justify-between gap-6"
                     >
-                      Manual Entry
-                    </h3>
+                      <div>
+                        <h2
+                          class="text-xl font-bold text-black font-montserrat"
+                        >
+                          {{ selectedEventName }}
+                        </h2>
+                        <p class="text-sm text-gray-500 mt-1">
+                          Phase:
+                          <span class="font-bold text-black">{{
+                            eventStatus.replace("_ACTIVE", "").replace("_", " ")
+                          }}</span>
+                        </p>
+                      </div>
+                      <div
+                        class="px-4 py-2 bg-gray-50 rounded-lg text-xs font-bold text-gray-500 uppercase tracking-widest border border-gray-200 flex items-center gap-2"
+                      >
+                        <span
+                          class="w-2 h-2 rounded-full"
+                          :class="
+                            isCameraActive
+                              ? 'bg-green-500 animate-pulse'
+                              : 'bg-gray-400'
+                          "
+                        ></span>
+                        {{ isCameraActive ? "Scanning..." : "Standing By" }}
+                      </div>
+                    </div>
+
+                    <div
+                      v-if="scannedMatric || scanWarning"
+                      class="mt-5 animate-fade-in flex"
+                    >
+                      <div
+                        class="flex items-center gap-2.5 px-4 py-2 rounded-lg border text-xs font-semibold tracking-wide font-poppins"
+                        :class="
+                          scanWarning
+                            ? 'bg-red-50 border-red-200 text-red-800'
+                            : 'bg-black border-black text-white shadow-sm'
+                        "
+                      >
+                        <Icon
+                          :name="
+                            scanWarning
+                              ? 'material-symbols:error'
+                              : 'material-symbols:check-circle'
+                          "
+                          class="text-base shrink-0"
+                          :class="
+                            scanWarning ? 'text-red-500' : 'text-green-400'
+                          "
+                        />
+                        <span class="truncate">
+                          <span
+                            v-if="!scanWarning"
+                            class="text-gray-400 font-normal mr-1"
+                            >Logged:</span
+                          >
+                          {{ scanWarning ? scanWarning : scannedMatric }}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <form
-                  @submit.prevent="submitManual"
-                  class="flex flex-col sm:flex-row gap-5"
+
+                <div
+                  class="bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100"
                 >
-                  <input
-                    v-model="manualMatric"
-                    type="text"
-                    placeholder="FT"
-                    required
-                    class="grow border-gray-400 focus:border-black border rounded-md py-3 px-4 text-black outline-none transition-all"
-                  />
-                  <button
-                    type="submit"
-                    :disabled="isManualSubmitting"
-                    class="h-14 px-8 bg-black text-white font-bold rounded-xl hover:bg-neutral-800 transition-all uppercase tracking-widest text-xs flex items-center gap-2 disabled:opacity-50"
+                  <div class="flex items-center gap-3 mb-6">
+                    <div
+                      class="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center border border-gray-200 text-black"
+                    >
+                      <Icon name="material-symbols:keyboard" class="text-2xl" />
+                    </div>
+                    <div>
+                      <h3
+                        class="text-sm font-bold uppercase tracking-widest text-black"
+                      >
+                        Manual Entry
+                      </h3>
+                    </div>
+                  </div>
+                  <form
+                    @submit.prevent="submitManual"
+                    class="flex flex-col sm:flex-row gap-5"
                   >
-                    <Icon
-                      v-if="isManualSubmitting"
-                      name="material-symbols:sync"
-                      class="animate-spin text-lg"
+                    <input
+                      v-model="manualMatric"
+                      type="text"
+                      placeholder="FT"
+                      required
+                      class="grow border-gray-400 focus:border-black border rounded-md py-3 px-4 text-black outline-none transition-all"
                     />
-                    {{ isManualSubmitting ? "Verifying..." : "Verify Record" }}
-                  </button>
-                </form>
-              </div>
-            </template>
+                    <button
+                      type="submit"
+                      :disabled="isManualSubmitting"
+                      class="h-14 px-8 bg-black text-white font-bold rounded-xl hover:bg-neutral-800 transition-all uppercase tracking-widest text-xs flex items-center gap-2 disabled:opacity-50"
+                    >
+                      <Icon
+                        v-if="isManualSubmitting"
+                        name="material-symbols:sync"
+                        class="animate-spin text-lg"
+                      />
+                      {{
+                        isManualSubmitting ? "Verifying..." : "Verify Record"
+                      }}
+                    </button>
+                  </form>
+                </div>
+              </template>
+            </div>
           </template>
         </div>
       </div>
@@ -450,7 +410,6 @@
               >
                 Clear
               </button>
-
               <button
                 @click="syncRecords"
                 :disabled="isSyncing || !isOnline"
@@ -540,9 +499,9 @@
                     class="hover:bg-red-50/30 transition-colors"
                   >
                     <td class="p-4 pl-6 sm:pl-8">
-                      <span class="font-semibold font-montserrat text-black">
-                        {{ record.matric_number || record.matric || "Unknown" }}
-                      </span>
+                      <span class="font-semibold font-montserrat text-black">{{
+                        record.matric_number || record.matric || "Unknown"
+                      }}</span>
                     </td>
                     <td class="p-4 pr-6 sm:pr-8">
                       <span
@@ -592,6 +551,8 @@ import { useToast } from "~/composables/useToast";
 const router = useRouter();
 const { token } = useAuth();
 const toast = useToast();
+
+const isRegistryOpen = ref(true); // Controls the accordion
 
 const isUnlocked = ref(false);
 const unlockPin = ref("");
@@ -660,7 +621,6 @@ const {
   clearQueue,
 } = useScanner(selectedEventId, eventStatus);
 
-// NEW: Helper function to toggle the tab and scroll to the table
 const viewRejections = () => {
   if (unsyncedQueue.value.length === 0 && syncErrors.value.length === 0) {
     toast.info("No records in the local queue.");
@@ -669,7 +629,6 @@ const viewRejections = () => {
 
   activeTab.value = "rejected";
 
-  // A small timeout ensures the Vue DOM updates the v-if wrapper before scrolling
   setTimeout(() => {
     document.getElementById("queue-inspector")?.scrollIntoView({
       behavior: "smooth",
@@ -759,11 +718,24 @@ watch(eventStatus, async (newStatus) => {
 const selectEvent = (eventId) => {
   forceKillCamera.value = true;
   selectedEventId.value = eventId;
+
+  isRegistryOpen.value = false;
+  if (window.innerWidth < 1024) {
+    setTimeout(() => window.scrollTo({ top: 150, behavior: "smooth" }), 150);
+  }
+
   checkEventStatus();
   checkAccess();
 
   if (pollInterval) clearInterval(pollInterval);
   pollInterval = setInterval(checkEventStatus, 10000);
+  setTimeout(() => (forceKillCamera.value = false), 500);
+};
+
+const clearSelection = () => {
+  forceKillCamera.value = true;
+  selectedEventId.value = null;
+  isRegistryOpen.value = true;
   setTimeout(() => (forceKillCamera.value = false), 500);
 };
 

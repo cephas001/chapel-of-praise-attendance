@@ -236,7 +236,14 @@
               to="/profile"
               @click="isMobileMenuOpen = false"
             >
-              <Icon name="material-symbols:person" class="text-xl" />
+              <img
+                v-if="user.avatar_url"
+                :src="user.avatar_url"
+                loading="lazy"
+                alt="Avatar"
+                class="w-full h-full object-cover rounded-full"
+              />
+              <Icon v-else name="material-symbols:person" class="text-xl" />
             </NuxtLink>
             <div class="flex flex-col truncate">
               <span

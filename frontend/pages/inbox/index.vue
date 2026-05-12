@@ -12,7 +12,7 @@
             Inbox
           </h1>
           <p class="text-gray-500 font-poppins tracking-wide">
-            Your personal alerts and deployment updates.
+            Your personal alerts and updates.
           </p>
         </div>
         <div class="flex items-center gap-3">

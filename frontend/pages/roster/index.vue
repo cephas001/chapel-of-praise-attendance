@@ -11,7 +11,7 @@
             Active Rosters
           </h1>
           <p class="text-gray-500 font-poppins tracking-wide">
-            View live personnel assignments for current events.
+            View live personnel assignments.
           </p>
         </div>
         <div class="flex items-center gap-3">
@@ -44,10 +44,10 @@
         <div class="lg:col-span-7 flex flex-col gap-6 order-2">
           <div
             v-if="!selectedEvent"
-            class="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm flex flex-col items-center justify-center text-center h-full min-h-100"
+            class="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm flex flex-col items-center justify-center text-center h-full min-h-70"
           >
             <div
-              class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-400"
+              class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-2 text-gray-400"
             >
               <Icon
                 name="material-symbols:format-list-bulleted"

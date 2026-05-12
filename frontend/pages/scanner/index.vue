@@ -11,7 +11,7 @@
             Scanner
           </h1>
           <p class="text-gray-500 font-poppins tracking-wide">
-            Mark attendance with ease and efficiency.
+            Mark attendance with efficiency.
           </p>
         </div>
         <div class="flex items-center gap-3 font-poppins">
@@ -67,10 +67,10 @@
         <div class="lg:col-span-7 space-y-6 order-2">
           <div
             v-if="!selectedEventId"
-            class="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm flex flex-col items-center justify-center text-center h-full min-h-[400px]"
+            class="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm flex flex-col items-center justify-center text-center h-full min-h-70"
           >
             <div
-              class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-400"
+              class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-2 text-gray-400"
             >
               <Icon name="material-symbols:qr-code-scanner" class="text-3xl" />
             </div>

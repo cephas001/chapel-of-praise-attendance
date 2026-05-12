@@ -688,9 +688,10 @@ const handleLogout = async () => {
     isDestructive: true,
   });
 
-  if (isConfirmed) logout();
-
-  router.push("/login");
+  if (isConfirmed) {
+    logout();
+    router.push("/login");
+  }
 };
 
 onMounted(async () => {

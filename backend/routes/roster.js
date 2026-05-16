@@ -86,7 +86,7 @@ router.post(
       }
 
       // ==========================================
-      // THE DYNAMIC BALANCER
+      // THE DYNAMIC BALANCER (Vertical Column Logic)
       // ==========================================
       const arrangerZones = zones.filter(
         (z) => z.prefix !== "CHOIR_MEDIA" && z.prefix !== "USHERS",
@@ -96,20 +96,59 @@ router.post(
       let scanningUshers = [];
       let scannerPool = [];
 
+      // HELPER: Parse "A1", "B10" into Row ('A') and Col (1)
+      const parseZone = (name) => {
+        const match = name.match(/^([a-zA-Z_]+?)(\d+)$/);
+        if (match) return { row: match[1], col: parseInt(match[2], 10) };
+        return { row: name, col: name }; // Fallback for custom names (e.g., "GALLERY")
+      };
+
+      // 1. Group all zones by their vertical column
+      const columnsMap = new Map();
+      arrangerZones.forEach((z) => {
+        const parsed = parseZone(z.name);
+        if (!columnsMap.has(parsed.col)) columnsMap.set(parsed.col, []);
+        columnsMap.get(parsed.col).push({ ...z, ...parsed });
+      });
+
+      // 2. Sort columns numerically and separate into Front (A/B) and Back (C+)
+      const processedCols = [];
+      let totalFronts = 0;
+      let totalBacks = 0;
+
+      const sortedColKeys = Array.from(columnsMap.keys()).sort((a, b) => {
+        const numA = parseInt(a),
+          numB = parseInt(b);
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        return String(a).localeCompare(String(b));
+      });
+
+      sortedColKeys.forEach((colKey) => {
+        const zonesInCol = columnsMap.get(colKey);
+        // Sort vertically: A -> Z
+        zonesInCol.sort((a, b) => a.row.localeCompare(b.row));
+
+        const front = zonesInCol.filter((z) => z.row === "A" || z.row === "B");
+        const back = zonesInCol.filter((z) => z.row !== "A" && z.row !== "B");
+
+        processedCols.push({ col: colKey, front, back, all: zonesInCol });
+        if (front.length > 0) totalFronts++;
+        if (back.length > 0) totalBacks++;
+      });
+
       if (scanningOnly) {
-        // Bypass arranging math entirely. Dump everyone into the scanner pool.
         scanningUshers = ushers;
-        scannerPool = [...others, ...scanningUshers]; // Non-ushers are loaded at the front!
+        scannerPool = [...others, ...scanningUshers];
       } else {
-        const IDEAL_COLS_PER_ARRANGER = 5;
-        let targetArrangers = Math.ceil(
-          arrangerZones.length / IDEAL_COLS_PER_ARRANGER,
-        );
+        // Ideal scenario: Every column gets 1 Front Arranger + 1 Back Arranger
+        const idealArrangers = totalFronts + totalBacks;
         const minScannersNeeded = Math.ceil(highTraffic.length / 2);
         const totalAvailable = ushers.length + others.length;
 
-        let allowedArrangers = Math.min(targetArrangers, ushers.length);
+        // Cap allowed arrangers so we don't assign more than we have tasks for
+        let allowedArrangers = Math.min(idealArrangers, ushers.length);
 
+        // Protect the scanners!
         if (totalAvailable - allowedArrangers < minScannersNeeded) {
           allowedArrangers = Math.max(
             0,
@@ -119,7 +158,7 @@ router.post(
 
         dedicatedArrangers = ushers.slice(0, allowedArrangers);
         scanningUshers = ushers.slice(allowedArrangers);
-        scannerPool = [...others, ...scanningUshers]; // Non-ushers are loaded at the front!
+        scannerPool = [...others, ...scanningUshers];
 
         if (dedicatedArrangers.length === 0 && arrangerZones.length > 0) {
           warnings.push(
@@ -139,69 +178,78 @@ router.post(
       }
 
       // ==========================================
-      // LOOP 1: ARRANGER ASSIGNMENTS (Boundary-Aware Snapping)
+      // LOOP 1: ARRANGER ASSIGNMENTS (Vertical Distribution)
       // ==========================================
-      // If Scanning Only is active, dedicatedArrangers will be empty, cleanly bypassing this block
       if (dedicatedArrangers.length > 0) {
-        let startIndex = 0;
-        const numChunks = dedicatedArrangers.length;
+        const arrangerTasks = [];
 
-        for (let i = 0; i < numChunks; i++) {
-          if (startIndex >= arrangerZones.length) break;
+        if (dedicatedArrangers.length >= processedCols.length) {
+          // Normal/Good Staffing: We have at least 1 person per column.
+          // Decide how many columns get the luxury of a Front/Back split.
+          let splitBudget = dedicatedArrangers.length - processedCols.length;
 
-          let chunk;
-          if (i === numChunks - 1) {
-            chunk = arrangerZones.slice(startIndex);
-          } else {
-            const zonesLeft = arrangerZones.length - startIndex;
-            const arrangersLeft = numChunks - i;
-            const targetSize = Math.ceil(zonesLeft / arrangersLeft);
-
-            let bestBreakIndex = startIndex + targetSize - 1;
-            const snapRadius = Math.floor(targetSize / 2);
-
-            for (let offset = 0; offset <= snapRadius; offset++) {
-              let checkIdx = bestBreakIndex - offset;
-              if (
-                checkIdx > startIndex &&
-                checkIdx < arrangerZones.length - 1 &&
-                arrangerZones[checkIdx].prefix !==
-                  arrangerZones[checkIdx + 1].prefix
-              ) {
-                bestBreakIndex = checkIdx;
-                break;
-              }
-              checkIdx = bestBreakIndex + offset;
-              if (
-                checkIdx < arrangerZones.length - 1 &&
-                arrangerZones[checkIdx].prefix !==
-                  arrangerZones[checkIdx + 1].prefix
-              ) {
-                bestBreakIndex = checkIdx;
-                break;
-              }
+          processedCols.forEach((colData) => {
+            if (
+              colData.front.length > 0 &&
+              colData.back.length > 0 &&
+              splitBudget > 0
+            ) {
+              // We have the budget to split this column!
+              arrangerTasks.push(colData.front);
+              arrangerTasks.push(colData.back);
+              splitBudget--;
+            } else {
+              // Shortage: One person takes the whole column
+              arrangerTasks.push(colData.all);
             }
+          });
+        } else {
+          // SEVERE Shortage: We have fewer arrangers than columns.
+          // We must group adjacent columns together.
+          const numArrangers = dedicatedArrangers.length;
+          for (let i = 0; i < numArrangers; i++) {
+            let start = Math.floor((i * processedCols.length) / numArrangers);
+            let end = Math.floor(
+              ((i + 1) * processedCols.length) / numArrangers,
+            );
+            let taskZones = [];
+            for (let j = start; j < end; j++) {
+              taskZones.push(...processedCols[j].all);
+            }
+            arrangerTasks.push(taskZones);
+          }
+        }
 
-            chunk = arrangerZones.slice(startIndex, bestBreakIndex + 1);
-            startIndex = bestBreakIndex + 1;
+        // Assign the generated tasks to the dedicated arrangers
+        arrangerTasks.forEach((taskZones, index) => {
+          if (taskZones.length === 0) return;
+
+          const user = dedicatedArrangers[index];
+          let zoneLabel = "";
+
+          if (taskZones.length === 1) {
+            zoneLabel = taskZones[0].name; // e.g., "A1"
+          } else {
+            // Check if this task spans multiple columns (Severe Shortage)
+            const uniqueCols = [...new Set(taskZones.map((z) => z.col))];
+            if (uniqueCols.length > 1) {
+              zoneLabel = `Columns ${Math.min(...uniqueCols)} to ${Math.max(...uniqueCols)}`;
+            } else {
+              // Single column, multiple rows (Normal) -> e.g., "A1 to B1" or "C1 to F1"
+              taskZones.sort((a, b) => a.row.localeCompare(b.row));
+              zoneLabel = `${taskZones[0].name} to ${taskZones[taskZones.length - 1].name}`;
+            }
           }
 
-          if (chunk.length === 0) continue;
-
-          const zoneLabel =
-            chunk.length > 1
-              ? `${chunk[0].name} to ${chunk[chunk.length - 1].name}`
-              : chunk[0].name;
-
           proposedAssignments.push({
-            user_id: dedicatedArrangers[i].id,
+            user_id: user.id,
             event_id: eventId,
-            user: dedicatedArrangers[i],
-            zone_name: `${zoneLabel}`,
+            user: user,
+            zone_name: zoneLabel,
             task_type: "ARRANGER",
             is_primary: true,
           });
-        }
+        });
       }
 
       // ==========================================

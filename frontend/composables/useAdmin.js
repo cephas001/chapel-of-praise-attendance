@@ -1,12 +1,12 @@
 // frontend/composables/useAdmin.js
 import { ref } from "vue";
 import { useAuth } from "~/composables/useAuth";
-import { useToast } from "~/composables/useToast";
+import { useAppToast } from "~/composables/useAppToast";
 import { useConfirm } from "~/composables/useConfirm";
 
 export const useAdmin = () => {
   const { user } = useAuth();
-  const toast = useToast();
+  const toast = useAppToast();
   const confirm = useConfirm();
 
   const allEvents = ref([]);

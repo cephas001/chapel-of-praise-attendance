@@ -181,10 +181,10 @@
 
 <script setup>
 import { ref, onMounted } from "vue";
-import { useToast } from "~/composables/useToast";
+import { useAppToast } from "~/composables/useAppToast";
 import AdminRosterReview from "~/components/Admin/RosterReview.vue";
 
-const toast = useToast();
+const toast = useAppToast();
 
 const activeEvents = ref([]);
 const isLoadingEvents = ref(false);

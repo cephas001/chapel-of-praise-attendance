@@ -1,5 +1,4 @@
 import { useCookie } from "#app";
-// Note: useApiFetch is auto-imported by Nuxt!
 
 export const useAuth = () => {
   const user = useCookie("auth_user", { default: () => null, maxAge: 604800 });
@@ -10,7 +9,6 @@ export const useAuth = () => {
 
   const login = async (email, password) => {
     try {
-      // No URL hardcoding, no headers, no JSON.stringify, no res.json()!
       const data = await useApiFetch("/login", {
         method: "POST",
         body: { email, password },
@@ -19,8 +17,23 @@ export const useAuth = () => {
       user.value = data.user;
       token.value = data.token;
     } catch (error) {
-      // $fetch automatically throws an error if status is not 2xx
       throw new Error(error.data?.error || "Invalid username or password");
+    }
+  };
+
+  // --- NEW: Centralized Google API Call ---
+  const googleLogin = async (firebaseToken) => {
+    try {
+      const data = await useApiFetch("/google", {
+        method: "POST",
+        body: { token: firebaseToken },
+      });
+
+      user.value = data.user;
+      token.value = data.token;
+    } catch (error) {
+      // Pass the specific backend message (e.g. "Access Denied: Email not registered")
+      throw new Error(error.data?.message || "Failed to connect to server.");
     }
   };
 
@@ -29,5 +42,5 @@ export const useAuth = () => {
     token.value = null;
   };
 
-  return { user, token, login, logout };
+  return { user, token, login, googleLogin, logout };
 };

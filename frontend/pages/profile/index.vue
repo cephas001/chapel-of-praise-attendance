@@ -492,14 +492,14 @@
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useAuth } from "~/composables/useAuth";
-import { useToast } from "~/composables/useToast";
+import { useAppToast } from "~/composables/useAppToast";
 import { useConfirm } from "~/composables/useConfirm";
 import { db } from "~/utils/db";
 
 const confirm = useConfirm();
 const router = useRouter();
 const { user, logout } = useAuth();
-const toast = useToast();
+const toast = useAppToast();
 
 const isPasswordModalOpen = ref(false);
 const isChangingPassword = ref(false);

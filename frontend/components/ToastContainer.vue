@@ -43,9 +43,9 @@
 </template>
 
 <script setup>
-import { useToast } from "~/composables/useToast";
+import { useAppToast } from "~/composables/useAppToast";
 
-const { toasts, remove } = useToast();
+const { toasts, remove } = useAppToast();
 
 // Dictionaries to map the toast 'type' to specific Tailwind classes
 const borderColors = {

@@ -259,9 +259,9 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from "vue";
-import { useToast } from "~/composables/useToast";
+import { useAppToast } from "~/composables/useAppToast";
 
-const toast = useToast();
+const toast = useAppToast();
 const isOpen = ref(false);
 const isSending = ref(false);
 const isLoadingUsers = ref(false);

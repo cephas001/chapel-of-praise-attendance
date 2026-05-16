@@ -269,7 +269,7 @@
 
 <script setup>
 import { ref, computed, watch } from "vue";
-import { useToast } from "~/composables/useToast";
+import { useAppToast } from "~/composables/useAppToast";
 
 const props = defineProps({
   eventId: String,
@@ -278,7 +278,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["published", "discard"]);
-const toast = useToast();
+const toast = useAppToast();
 const isPublishing = ref(false);
 
 const searchQuery = ref("");

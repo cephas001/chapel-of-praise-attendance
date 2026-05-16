@@ -2,7 +2,7 @@
 import { ref, onMounted, onBeforeUnmount, watch } from "vue";
 import { db } from "~/utils/db";
 import { useAuth } from "~/composables/useAuth";
-import { useToast } from "~/composables/useToast";
+import { useAppToast } from "~/composables/useAppToast";
 import { useConfirm } from "~/composables/useConfirm";
 
 const scanSuccessAudioUrl = new URL(
@@ -18,7 +18,7 @@ const errorAudioUrl = new URL("../assets/audio/error.mp3", import.meta.url)
 
 export const useScanner = (selectedEventId, eventStatus) => {
   const { user, token } = useAuth();
-  const toast = useToast();
+  const toast = useAppToast();
   const confirmDialog = useConfirm();
 
   const isOnline = ref(true);

@@ -546,11 +546,11 @@ import {
 import { useRouter } from "vue-router";
 import { useAuth } from "~/composables/useAuth";
 import { useScanner } from "~/composables/useScanner";
-import { useToast } from "~/composables/useToast";
+import { useAppToast } from "~/composables/useAppToast";
 
 const router = useRouter();
 const { token } = useAuth();
-const toast = useToast();
+const toast = useAppToast();
 
 const isRegistryOpen = ref(true); // Controls the accordion
 

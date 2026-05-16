@@ -462,11 +462,11 @@
 
 <script setup>
 import { ref, computed } from "vue";
-import { useToast } from "~/composables/useToast";
+import { useAppToast } from "~/composables/useAppToast";
 import { useConfirm } from "~/composables/useConfirm";
 import { useAdmin } from "~/composables/useAdmin";
 
-const toast = useToast();
+const toast = useAppToast();
 const confirmDialog = useConfirm();
 const { checkAvailability } = useAdmin();
 

@@ -1,6 +1,6 @@
 import { useState } from "#app";
 
-export const useToast = () => {
+export const useAppToast = () => {
   // Global state holding our array of active toast notifications
   const toasts = useState("global-toasts", () => []);
 

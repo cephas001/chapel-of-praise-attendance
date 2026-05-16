@@ -1,6 +1,6 @@
 import { ref, computed } from "vue";
 import { useAuth } from "~/composables/useAuth";
-import { useToast } from "~/composables/useToast";
+import { useAppToast } from "~/composables/useAppToast";
 
 const inbox = ref([]);
 let eventSource = null;
@@ -8,7 +8,7 @@ let alertAudio = null;
 
 export const useMessages = () => {
   const { token } = useAuth();
-  const toast = useToast();
+  const toast = useAppToast();
   const config = useRuntimeConfig();
 
   // Computed property for the red notification badge

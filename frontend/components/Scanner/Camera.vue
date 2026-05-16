@@ -69,9 +69,9 @@
 
 <script setup>
 import { ref, onBeforeUnmount, nextTick, watch } from "vue";
-import { useToast } from "~/composables/useToast";
+import { useAppToast } from "~/composables/useAppToast";
 
-const toast = useToast();
+const toast = useAppToast();
 const props = defineProps({
   forceStop: Boolean,
 });

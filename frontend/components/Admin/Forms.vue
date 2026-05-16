@@ -321,10 +321,10 @@
 <script setup>
 import { ref } from "vue";
 import { useAdmin } from "~/composables/useAdmin";
-import { useToast } from "~/composables/useToast"; // Added for safety alerts
+import { useAppToast } from "~/composables/useAppToast"; // Added for safety alerts
 
 const { checkAvailability } = useAdmin();
-const toast = useToast();
+const toast = useAppToast();
 const emit = defineEmits(["eventCreated", "userCreated"]);
 
 const isEventFormOpen = ref(false);

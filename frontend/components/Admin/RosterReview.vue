@@ -69,7 +69,7 @@
         <input
           v-model="searchQuery"
           type="text"
-          placeholder="Search personnel or unit..."
+          placeholder="Search personnel, unit, or zone..."
           class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm font-poppins focus:border-black outline-none transition-colors"
         />
       </div>
@@ -80,6 +80,7 @@
         <option value="name_asc">Name (A-Z)</option>
         <option value="name_desc">Name (Z-A)</option>
         <option value="unit">Unit Grouping</option>
+        <option value="zone">Zone Progression</option>
       </select>
     </div>
 
@@ -127,11 +128,28 @@
                   </span>
                 </div>
                 <div>
-                  <span class="font-bold text-sm font-poppins text-black block">
-                    {{ user.username }}
-                  </span>
+                  <div class="flex items-center gap-2">
+                    <span
+                      class="font-bold text-sm font-poppins text-black block"
+                    >
+                      {{ user.username }}
+                    </span>
+
+                    <button
+                      v-if="route.fullPath.includes('/admin')"
+                      @click="$emit('reassign', user)"
+                      class="text-gray-700 hover:text-blue-600 transition-colors flex items-center outline-none"
+                      title="Reassign Tasks"
+                    >
+                      <Icon
+                        name="material-symbols:edit-square-outline"
+                        class="text-[15px]"
+                      />
+                    </button>
+                  </div>
+
                   <span
-                    class="text-[10px] font-bold text-gray-400 uppercase tracking-widest"
+                    class="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mt-0.5"
                   >
                     {{ user.unit }}
                   </span>
@@ -270,6 +288,9 @@
 <script setup>
 import { ref, computed, watch } from "vue";
 import { useAppToast } from "~/composables/useAppToast";
+import { useRoute } from "vue-router";
+
+const route = useRoute();
 
 const props = defineProps({
   eventId: String,
@@ -277,7 +298,7 @@ const props = defineProps({
   isReadonly: { type: Boolean, default: false },
 });
 
-const emit = defineEmits(["published", "discard"]);
+const emit = defineEmits(["published", "discard", "reassign"]);
 const toast = useAppToast();
 const isPublishing = ref(false);
 
@@ -343,16 +364,39 @@ const groupedAssignments = computed(() => {
   return Object.values(userMap);
 });
 
+// --- NEW HELPER: Universal Search Filter ---
+const matchesSearch = (user, query) => {
+  const q = query.toLowerCase();
+
+  // 1. Check if name or unit matches
+  if (
+    user.username.toLowerCase().includes(q) ||
+    user.unit.toLowerCase().includes(q)
+  ) {
+    return true;
+  }
+
+  // 2. Check if ANY of their Primary Zones match (e.g., typing "1" matches "A1" or "Columns 1 to 2")
+  const primaryMatch = user.primaryTasks.some((task) =>
+    task.zone_name.toLowerCase().includes(q),
+  );
+  if (primaryMatch) return true;
+
+  // 3. Check if ANY of their Secondary Zones match
+  const secondaryMatch = user.secondaryTasks.some((task) =>
+    task.zone_name.toLowerCase().includes(q),
+  );
+  if (secondaryMatch) return true;
+
+  return false;
+};
+
 const paginatedAndFilteredAssignments = computed(() => {
   let result = [...groupedAssignments.value];
 
+  // Apply the new deep search!
   if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
-    result = result.filter(
-      (u) =>
-        u.username.toLowerCase().includes(query) ||
-        u.unit.toLowerCase().includes(query),
-    );
+    result = result.filter((u) => matchesSearch(u, searchQuery.value));
   }
 
   result.sort((a, b) => {
@@ -363,6 +407,18 @@ const paginatedAndFilteredAssignments = computed(() => {
     } else if (sortOrder.value === "unit") {
       const unitCompare = a.unit.localeCompare(b.unit);
       if (unitCompare !== 0) return unitCompare;
+      return a.username.localeCompare(b.username);
+    } else if (sortOrder.value === "zone") {
+      // Sort by Zone Name (Alphanumerically)
+      const zoneA =
+        a.primaryTasks[0]?.zone_name || a.secondaryTasks[0]?.zone_name || "ZZZ";
+      const zoneB =
+        b.primaryTasks[0]?.zone_name || b.secondaryTasks[0]?.zone_name || "ZZZ";
+
+      const zoneCompare = zoneA.localeCompare(zoneB, undefined, {
+        numeric: true,
+      });
+      if (zoneCompare !== 0) return zoneCompare;
       return a.username.localeCompare(b.username);
     }
     return 0;
@@ -375,14 +431,12 @@ const paginatedAndFilteredAssignments = computed(() => {
 
 const totalPages = computed(() => {
   let result = [...groupedAssignments.value];
+
+  // Apply the same deep search to the pagination counter!
   if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase();
-    result = result.filter(
-      (u) =>
-        u.username.toLowerCase().includes(query) ||
-        u.unit.toLowerCase().includes(query),
-    );
+    result = result.filter((u) => matchesSearch(u, searchQuery.value));
   }
+
   return Math.ceil(result.length / itemsPerPage) || 1;
 });
 

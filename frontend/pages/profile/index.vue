@@ -531,6 +531,11 @@ const submitPasswordChange = async () => {
     return;
   }
 
+  if (/\s/.test(passwordData.value.new)) {
+    passwordError.value = "Password cannot contain spaces or whitespace.";
+    return;
+  }
+
   isChangingPassword.value = true;
 
   try {

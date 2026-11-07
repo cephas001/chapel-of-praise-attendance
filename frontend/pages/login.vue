@@ -225,10 +225,7 @@ const handleLogin = async () => {
   errorMessage.value = "";
 
   try {
-    await login(
-      email.value.trim().toLowerCase(),
-      password.value.trim().toLowerCase(),
-    );
+    await login(email.value.trim().toLowerCase(), password.value);
     router.push("/");
   } catch (error) {
     errorMessage.value = error.message;

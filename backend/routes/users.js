@@ -18,6 +18,9 @@ const upload = multer({
 
 const router = express.Router();
 
+// Passwords are stored exactly as entered, so reject whitespace when setting one
+const containsWhitespace = (value) => /\s/.test(value);
+
 // ==========================================
 // GET ALL USERS (Paginated Table View)
 // ==========================================
@@ -85,6 +88,13 @@ router.get(
 router.post("/", authenticateToken, requireSuperAdmin, async (req, res) => {
   const { username, password, role, first_name, last_name, unit, email } =
     req.body;
+
+  if (!password || containsWhitespace(password)) {
+    return res.status(400).json({
+      message: "Password is required and cannot contain spaces or whitespace.",
+    });
+  }
+
   try {
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser)
@@ -398,6 +408,12 @@ router.patch("/profile/password", authenticateToken, async (req, res) => {
       return res
         .status(400)
         .json({ error: "Both current and new passwords are required" });
+    }
+
+    if (containsWhitespace(newPassword)) {
+      return res
+        .status(400)
+        .json({ error: "New password cannot contain spaces or whitespace." });
     }
 
     // 1. Fetch the user to get their current hash

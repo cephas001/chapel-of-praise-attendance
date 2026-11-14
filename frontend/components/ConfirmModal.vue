@@ -2,59 +2,56 @@
   <Transition name="fade">
     <div
       v-if="isOpen"
-      class="fixed inset-0 z-[9999] flex items-center justify-center px-4 sm:px-0"
+      class="fixed inset-0 z-modal flex items-end justify-center sm:items-center sm:p-4"
     >
       <div
-        class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+        aria-hidden="true"
+        class="absolute inset-0 bg-ink/60"
         @click="respond(false)"
       ></div>
 
       <Transition name="scale">
         <div
           v-if="isOpen"
-          class="bg-white rounded-2xl shadow-2xl max-w-sm w-full relative z-10 overflow-hidden text-center"
+          ref="modalRef"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-modal-title"
+          aria-describedby="confirm-modal-message"
+          tabindex="-1"
+          class="relative z-10 w-full max-w-sm border border-rule bg-canvas"
         >
-          <div class="p-8">
-            <div
-              class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6"
-              :class="
-                isDestructive
-                  ? 'bg-red-50 text-red-600'
-                  : 'bg-blue-50 text-blue-600'
-              "
-            >
-              <Icon
-                :name="
-                  isDestructive
-                    ? 'material-symbols:warning'
-                    : 'material-symbols:help'
-                "
-                class="text-3xl"
-              />
-            </div>
-
-            <h3 class="text-xl font-black font-poppins text-gray-900 mb-2">
+          <div class="px-5 py-5">
+            <p class="led-eyebrow">
+              {{ isDestructive ? "confirm removal" : "confirm" }}
+            </p>
+            <h3 id="confirm-modal-title" class="led-display mt-2 text-[24px]">
               {{ title }}
             </h3>
-            <p class="text-sm text-gray-500 font-medium leading-relaxed">
+            <p
+              id="confirm-modal-message"
+              class="mt-2 text-sm leading-relaxed text-muted"
+            >
               {{ message }}
             </p>
           </div>
 
-          <div class="flex items-center border-t border-gray-100 bg-gray-50">
+          <div class="flex border-t border-rule">
             <button
+              type="button"
               @click="respond(false)"
-              class="flex-1 py-4 text-sm font-bold font-poppins text-gray-500 hover:bg-gray-100 transition-colors border-r border-gray-100 outline-none"
+              class="min-h-12 flex-1 border-r border-rule text-sm font-medium text-muted transition-colors hover:bg-inset hover:text-ink"
             >
               {{ cancelText }}
             </button>
             <button
+              type="button"
               @click="respond(true)"
-              class="flex-1 py-4 text-sm font-bold font-poppins transition-colors outline-none"
+              class="min-h-12 flex-1 text-sm font-semibold transition-colors hover:bg-inset"
               :class="
                 isDestructive
-                  ? 'text-red-600 hover:bg-red-50'
-                  : 'text-blue-600 hover:bg-blue-50'
+                  ? 'text-status-error'
+                  : 'text-chapel hover:text-chapel-strong'
               "
             >
               {{ confirmText }}
@@ -67,7 +64,9 @@
 </template>
 
 <script setup>
+import { ref } from "vue";
 import { useConfirm } from "~/composables/useConfirm";
+import { useModalA11y } from "~/composables/useModalA11y";
 
 // The component just reads the state and fires the respond() function
 const {
@@ -79,6 +78,12 @@ const {
   isDestructive,
   respond,
 } = useConfirm();
+
+const modalRef = ref(null);
+
+useModalA11y(isOpen, modalRef, {
+  onClose: () => respond(false),
+});
 </script>
 
 <style scoped>
@@ -93,7 +98,9 @@ const {
 
 .scale-enter-active,
 .scale-leave-active {
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition:
+    opacity 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+    transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 .scale-enter-from,
 .scale-leave-to {

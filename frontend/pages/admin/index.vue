@@ -1,78 +1,93 @@
 <template>
-  <div class="min-h-screen bg-gray-50 text-gray-900 font-sans pb-12">
-    <main class="pt-8 px-4 sm:px-8 max-w-7xl mx-auto">
-      <header
-        class="mb-10 sm:mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4"
-      >
-        <div>
-          <h1
-            class="text-4xl sm:text-5xl font-black tracking-tighter text-black mb-2 uppercase font-montserrat"
-          >
-            Admin Control
-          </h1>
-          <p class="text-gray-500 font-poppins tracking-wide">
-            Manage your environment configuration.
-          </p>
-        </div>
-        <div class="flex items-center gap-3">
+  <div class="min-h-screen bg-canvas pb-12 font-sans text-ink">
+    <main class="mx-auto max-w-6xl px-5 pt-6 sm:px-8">
+      <LedgerPageHeader eyebrow="control room" title="Admin control">
+        <template #actions>
           <button
+            type="button"
             @click="loadAllEvents"
             :disabled="isLoadingEvents"
-            class="p-2 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center justify-center"
-            title="Refresh Data"
+            class="led-eyebrow inline-flex min-h-11 items-center gap-1.5 py-2 transition-colors hover:text-ink disabled:opacity-50"
+            aria-label="Refresh admin data"
           >
             <Icon
               name="material-symbols:refresh"
-              class="text-xl text-gray-700"
+              class="text-base"
               :class="{ 'animate-spin': isLoadingEvents }"
             />
+            {{ isLoadingEvents ? "refreshing" : "refresh" }}
           </button>
-        </div>
-      </header>
+        </template>
+      </LedgerPageHeader>
 
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        <div class="lg:col-span-7 flex flex-col gap-6 order-1">
-          <EventSelector
-            title="Event Registry"
-            emptyMessage="No events have been created yet."
+      <div class="relative mt-6">
+        <nav
+          ref="tabRail"
+          aria-label="Admin sections"
+          class="overflow-x-auto"
+          @scroll="updateTabRailFade"
+        >
+          <div class="flex w-max min-w-full gap-6 border-b border-rule">
+            <button
+              v-for="tab in adminTabs"
+              :key="tab.id"
+              type="button"
+              class="flex items-baseline gap-2 whitespace-nowrap border-b-2 pb-3 text-[13px] font-medium transition-colors"
+              :class="
+                activeTab === tab.id
+                  ? 'border-chapel text-ink'
+                  : 'border-transparent text-muted hover:text-ink'
+              "
+              :aria-current="activeTab === tab.id ? 'page' : undefined"
+              @click="activeTab = tab.id"
+            >
+              {{ tab.label }}
+            </button>
+          </div>
+        </nav>
+        <div
+          v-show="tabFadeVisible"
+          aria-hidden="true"
+          class="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-canvas via-canvas/80 to-transparent lg:hidden"
+        ></div>
+      </div>
+
+      <section
+        v-show="activeTab === 'workspace'"
+        class="grid grid-cols-1 gap-10 pt-8 lg:grid-cols-12 lg:gap-0"
+      >
+        <div class="lg:col-span-4 lg:pr-8">
+          <LedgerEventRegister
+            v-model:isOpen="isRegistryOpen"
             :events="allEvents"
             :selectedId="selectedEvent?.id"
             :isLoading="isLoadingEvents"
-            :showStatus="true"
-            :showTotal="true"
-            v-model:isOpen="isRegistryOpen"
+            showStatus
+            emptyMessage="No events have been created yet."
             @select="(event) => selectEvent(event)"
           />
+        </div>
 
-          <div v-if="selectedEvent" class="flex flex-col gap-6 animate-fade-in">
-            <div
-              class="bg-black text-white p-6 sm:p-8 rounded-2xl flex justify-between items-center shadow-lg border border-gray-800"
-            >
-              <div>
-                <p
-                  class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1 flex items-center gap-1.5"
-                >
-                  <span
-                    class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"
-                  ></span>
-                  Active Workspace
-                </p>
-                <h3
-                  class="text-xl sm:text-2xl font-black font-poppins tracking-tight"
-                >
-                  {{ selectedEvent.name }}
-                </h3>
-              </div>
-              <button
-                @click="clearSelection"
-                class="w-10 h-10 bg-gray-800 hover:bg-gray-700 rounded-full flex items-center justify-center transition-colors border border-gray-700"
-                title="Close Workspace"
-              >
-                <Icon name="material-symbols:close" class="text-lg" />
-              </button>
-            </div>
+        <div class="lg:col-span-8 lg:border-l lg:border-rule lg:pl-8">
+          <div v-if="!selectedEvent" class="lg:min-h-[22rem]">
+            <p class="led-eyebrow">no event selected</p>
+            <h2 class="led-display mt-2 max-w-sm text-[28px] sm:text-[32px]">
+              Select an event to open its controls.
+            </h2>
+            <p class="mt-3 max-w-sm text-sm leading-relaxed text-muted">
+              From here you manage everything relating to an event.
+            </p>
+          </div>
 
-            <AdminAnalytics :eventId="selectedEvent.id" />
+          <div v-else class="flex flex-col gap-8">
+            <LedgerPhaseBar
+              :name="selectedEvent.name"
+              :context="
+                getEventStatus(selectedEvent.status).label.toLowerCase()
+              "
+              :dotClass="getEventStatus(selectedEvent.status).dotClass"
+              @close="clearSelection"
+            />
 
             <AdminEventControls
               :event="selectedEvent"
@@ -80,134 +95,103 @@
               @eventDeleted="handleEventDelete"
             />
 
-            <div v-if="!existingRoster" class="animate-fade-in">
+            <div v-if="!existingRoster">
               <AdminRosterSetup
                 :eventId="selectedEvent.id"
                 @rosterGenerated="handleRosterGenerated"
               />
             </div>
 
-            <section
-              v-else
-              class="bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-200 overflow-hidden"
-            >
+            <section v-else class="border-t border-rule">
               <button
                 @click="isRosterSetupOpen = !isRosterSetupOpen"
-                class="w-full p-6 sm:p-8 flex justify-between items-center bg-white hover:bg-gray-50 transition-colors focus:outline-none"
+                class="flex w-full items-center justify-between gap-4 py-4 text-left"
+                :aria-expanded="isRosterSetupOpen"
               >
-                <div class="flex items-center gap-3">
-                  <h2
-                    class="text-md font-black font-poppins flex items-center gap-2 m-0"
-                  >
-                    <Icon
-                      name="material-symbols:settings-suggest"
-                      class="text-lg text-black"
-                    />
-                    Modify Roster Parameters
-                  </h2>
-                </div>
-                <div
-                  class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center transition-transform duration-300"
-                  :class="{ 'rotate-180': isRosterSetupOpen }"
-                >
-                  <Icon
-                    name="material-symbols:keyboard-arrow-down"
-                    class="text-xl text-black"
-                  />
-                </div>
+                <span class="led-eyebrow">roster parameters</span>
+                <span class="led-eyebrow shrink-0 text-chapel">{{
+                  isRosterSetupOpen ? "hide" : "modify"
+                }}</span>
               </button>
 
-              <Transition name="accordion">
-                <div v-show="isRosterSetupOpen">
-                  <div class="border-t border-gray-100 pb-2">
-                    <AdminRosterSetup
-                      :eventId="selectedEvent.id"
-                      @rosterGenerated="handleRosterGenerated"
-                    />
-                  </div>
-                </div>
-              </Transition>
+              <div v-if="isRosterSetupOpen" class="pb-2">
+                <AdminRosterSetup
+                  :eventId="selectedEvent.id"
+                  @rosterGenerated="handleRosterGenerated"
+                />
+              </div>
             </section>
 
             <section
               v-if="displayRoster"
-              class="bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-200 overflow-hidden animate-fade-in"
+              class="border-t border-rule-strong pt-4"
             >
               <button
                 @click="isRosterReviewOpen = !isRosterReviewOpen"
-                class="w-full p-6 sm:p-8 flex justify-between items-center bg-white hover:bg-gray-50 transition-colors focus:outline-none"
+                class="flex w-full items-center justify-between gap-4 py-4 text-left"
+                :aria-expanded="isRosterReviewOpen"
               >
-                <div class="flex items-center gap-3">
-                  <h2
-                    class="text-md font-black font-poppins flex items-center gap-2 m-0"
-                    :class="generatedProposal ? 'text-black' : 'text-green-700'"
-                  >
-                    <Icon
-                      :name="
-                        generatedProposal
-                          ? 'material-symbols:warning'
-                          : 'material-symbols:fact-check'
-                      "
-                      class="text-lg"
-                    />
-                    {{
-                      generatedProposal
-                        ? "Review Proposed Roster (Unpublished)"
-                        : "View Active Roster"
-                    }}
-                  </h2>
-                </div>
-                <div
-                  class="w-8 h-8 rounded-full flex items-center justify-center transition-transform duration-300"
-                  :class="[
-                    isRosterReviewOpen ? 'rotate-180' : '',
+                <span class="led-eyebrow">
+                  {{
                     generatedProposal
-                      ? 'bg-black/5 text-black'
-                      : 'bg-green-50 text-green-700',
-                  ]"
-                >
-                  <Icon
-                    name="material-symbols:keyboard-arrow-down"
-                    class="text-xl"
-                  />
-                </div>
+                      ? "proposed roster, unpublished"
+                      : "active roster"
+                  }}
+                </span>
+                <span class="led-eyebrow shrink-0 text-chapel">{{
+                  isRosterReviewOpen ? "hide" : "open"
+                }}</span>
               </button>
 
-              <Transition name="accordion">
-                <div v-show="isRosterReviewOpen">
-                  <div class="border-t border-gray-100">
-                    <AdminRosterReview
-                      :eventId="selectedEvent.id"
-                      :proposal="displayRoster"
-                      :isReadonly="!generatedProposal"
-                      @discard="discardProposal"
-                      @published="handleRosterPublished"
-                    />
-                  </div>
-                </div>
-              </Transition>
+              <div v-if="isRosterReviewOpen">
+                <AdminRosterReview
+                  :eventId="selectedEvent.id"
+                  :proposal="displayRoster"
+                  :isReadonly="!generatedProposal"
+                  @discard="discardProposal"
+                  @published="handleRosterPublished"
+                />
+              </div>
             </section>
           </div>
         </div>
+      </section>
 
-        <div class="lg:col-span-5 flex flex-col gap-6 order-2">
-          <AdminBroadcast />
-          <AdminForms
-            @eventCreated="handleEventCreation"
-            @userCreated="handleUserCreation"
-          />
-          <AdminUserView />
-        </div>
-      </div>
+      <section v-show="activeTab === 'broadcast'" class="max-w-3xl pt-8">
+        <AdminBroadcast default-open />
+      </section>
+
+      <section v-show="activeTab === 'create-event'" class="max-w-2xl pt-8">
+        <AdminForms
+          section="event"
+          default-open
+          @eventCreated="handleEventCreation"
+          @userCreated="handleUserCreation"
+        />
+      </section>
+
+      <section v-show="activeTab === 'create-user'" class="max-w-2xl pt-8">
+        <AdminForms
+          section="user"
+          default-open
+          @eventCreated="handleEventCreation"
+          @userCreated="handleUserCreation"
+        />
+      </section>
+
+      <section v-show="activeTab === 'directory'" class="pt-8">
+        <AdminUserView default-open />
+      </section>
     </main>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch, nextTick } from "vue";
 import { useRouter } from "vue-router";
 import { useAuth } from "~/composables/useAuth";
 import { useAdmin } from "~/composables/useAdmin";
+import { getEventStatus } from "~/composables/useStatus";
 
 const router = useRouter();
 const { token } = useAuth();
@@ -223,6 +207,44 @@ const {
 
 const isRegistryOpen = ref(true);
 const selectedEvent = ref(null);
+const activeTab = ref("workspace");
+const tabRail = ref(null);
+const tabFadeVisible = ref(true);
+
+const adminTabs = [
+  {
+    id: "workspace",
+    label: "Event workspace",
+    icon: "material-symbols:dashboard",
+  },
+  { id: "broadcast", label: "Broadcast", icon: "material-symbols:campaign" },
+  {
+    id: "create-event",
+    label: "Create event",
+    icon: "material-symbols:event-upcoming",
+  },
+  { id: "create-user", label: "Add user", icon: "material-symbols:person-add" },
+  { id: "directory", label: "User directory", icon: "material-symbols:group" },
+];
+
+const scrollActiveTabIntoView = () => {
+  const rail = tabRail.value;
+  const active = rail?.querySelector('[aria-current="page"]');
+  if (!rail || !active) return;
+
+  const target =
+    active.offsetLeft - (rail.clientWidth - active.offsetWidth) / 2;
+  rail.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
+};
+
+const updateTabRailFade = () => {
+  const rail = tabRail.value;
+  if (!rail) return;
+  tabFadeVisible.value =
+    rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 2;
+};
+
+watch(activeTab, () => nextTick(scrollActiveTabIntoView));
 
 // Roster States
 const existingRoster = ref(null);
@@ -312,6 +334,7 @@ onMounted(() => {
 const handleEventCreation = async (eventData, callback) => {
   const newEvent = await createEvent(eventData);
   if (newEvent) {
+    activeTab.value = "workspace";
     selectEvent(newEvent);
   }
   callback(!!newEvent);
@@ -338,19 +361,3 @@ const handleEventDelete = async (id, callback) => {
   callback();
 };
 </script>
-
-<style scoped>
-.animate-fade-in {
-  animation: fadeIn 0.4s ease-out forwards;
-}
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-</style>

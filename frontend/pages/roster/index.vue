@@ -1,178 +1,84 @@
 <template>
-  <div class="min-h-screen bg-gray-50 text-gray-900 font-sans pb-12">
-    <main class="pt-8 px-6 sm:px-8 max-w-7xl mx-auto">
-      <header
-        class="mb-10 sm:mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4"
-      >
-        <div>
-          <h1
-            class="text-4xl sm:text-5xl font-black tracking-tighter text-black mb-2 uppercase font-montserrat"
-          >
-            Active Rosters
-          </h1>
-          <p class="text-gray-500 font-poppins tracking-wide">
-            View live personnel assignments.
-          </p>
-        </div>
-        <div class="flex items-center gap-3">
+  <div class="min-h-screen bg-canvas pb-24 font-sans text-ink">
+    <main class="mx-auto max-w-6xl px-5 pt-8 sm:px-8">
+      <LedgerPageHeader eyebrow="roster register" title="Active rosters">
+        <template #actions>
           <button
+            type="button"
             @click="loadActiveEvents"
             :disabled="isLoadingEvents"
-            class="p-2 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50 transition-colors disabled:opacity-50 flex items-center justify-center"
-            title="Refresh Data"
+            class="led-eyebrow inline-flex min-h-11 items-center gap-1.5 py-2 transition-colors hover:text-ink disabled:opacity-50"
+            aria-label="Refresh roster data"
           >
             <Icon
               name="material-symbols:refresh"
-              class="text-xl text-gray-700"
+              class="text-base"
               :class="{ 'animate-spin': isLoadingEvents }"
             />
+            {{ isLoadingEvents ? "refreshing" : "refresh" }}
           </button>
-        </div>
-      </header>
+        </template>
+      </LedgerPageHeader>
 
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        <div class="lg:col-span-5 flex flex-col gap-6 order-1">
-          <EventSelector
+      <div class="grid grid-cols-1 gap-10 pt-8 lg:grid-cols-12 lg:gap-0 lg:pt-10">
+        <div class="lg:col-span-4 lg:pr-8">
+          <LedgerEventRegister
+            v-model:isOpen="isRegistryOpen"
             :events="activeEvents"
             :selectedId="selectedEvent?.id"
             :isLoading="isLoadingEvents"
-            v-model:isOpen="isRegistryOpen"
             @select="selectEvent"
           />
         </div>
 
-        <div class="lg:col-span-7 flex flex-col gap-6 order-2">
-          <div
-            v-if="!selectedEvent"
-            class="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm flex flex-col items-center justify-center text-center h-full min-h-70"
-          >
-            <div
-              class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-2 text-gray-400"
-            >
-              <Icon
-                name="material-symbols:format-list-bulleted"
-                class="text-3xl"
-              />
-            </div>
-            <h2 class="text-xl font-black text-black font-montserrat mb-2">
-              Awaiting Event Selection
+        <div class="lg:col-span-8 lg:border-l lg:border-rule lg:pl-8">
+          <div v-if="!selectedEvent" class="lg:min-h-[22rem]">
+            <p class="led-eyebrow">no event selected</p>
+            <h2 class="led-display mt-2 max-w-sm text-[28px] sm:text-[32px]">
+              Choose an event to read its roster.
             </h2>
-            <p class="text-sm text-gray-500 max-w-xs">
-              Select an active event from the registry to view its live
-              personnel roster.
+            <p class="mt-3 max-w-sm text-sm leading-relaxed text-muted">
+              Only events that are currently open appear in the register.
             </p>
           </div>
 
-          <div v-else class="flex flex-col gap-6 animate-fade-in">
-            <div
-              class="bg-black text-white p-6 sm:p-8 rounded-2xl flex justify-between items-center shadow-lg border border-gray-800"
-            >
-              <div>
-                <p
-                  class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1 flex items-center gap-1.5"
-                >
-                  <span
-                    class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"
-                  ></span>
-                  Live Database
-                </p>
-                <h3
-                  class="text-xl sm:text-2xl font-black font-poppins tracking-tight"
-                >
-                  {{ selectedEvent.name }}
-                </h3>
-              </div>
-              <button
-                @click="clearSelection"
-                class="w-10 h-10 bg-gray-800 hover:bg-gray-700 rounded-full flex items-center justify-center transition-colors border border-gray-700"
-                title="Close Roster"
-              >
-                <Icon name="material-symbols:close" class="text-lg" />
-              </button>
-            </div>
+          <template v-else>
+            <LedgerPhaseBar
+              :name="selectedEvent.name"
+              context="live roster"
+              dotClass="bg-status-live"
+              @close="clearSelection"
+            />
 
-            <div
-              v-if="isLoadingRoster"
-              class="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm flex flex-col items-center justify-center text-center"
-            >
-              <Icon
-                name="material-symbols:sync"
-                class="animate-spin text-4xl text-gray-300 mb-4"
-              />
-              <p
-                class="text-sm text-gray-500 font-bold uppercase tracking-widest"
-              >
-                Fetching Roster...
-              </p>
-            </div>
+            <p v-if="isLoadingRoster" class="led-eyebrow py-6">
+              loading roster…
+            </p>
 
             <div
               v-else-if="
                 !currentRosterData ||
                 currentRosterData.proposedAssignments.length === 0
               "
-              class="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm flex flex-col items-center justify-center text-center"
+              class="py-10"
             >
-              <div
-                class="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mb-4 text-orange-400"
-              >
-                <Icon
-                  name="material-symbols:pending-actions"
-                  class="text-3xl"
-                />
-              </div>
-              <h2 class="text-xl font-black text-black font-montserrat mb-2">
-                No Roster Published
+              <p class="led-eyebrow">not published</p>
+              <h2 class="led-display mt-2 max-w-sm text-[28px]">
+                No roster published.
               </h2>
-              <p class="text-sm text-gray-500 max-w-xs">
-                A roster has not yet been generated and published for this
-                event.
+              <p class="mt-3 max-w-sm text-sm leading-relaxed text-muted">
+                An admin has not generated and published assignments for this
+                event yet.
               </p>
             </div>
 
-            <section
-              v-else
-              class="bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-200 overflow-hidden"
-            >
-              <button
-                @click="isRosterReviewOpen = !isRosterReviewOpen"
-                class="w-full p-6 sm:p-8 flex justify-between items-center bg-white hover:bg-gray-50 transition-colors focus:outline-none"
-              >
-                <div class="flex items-center gap-3">
-                  <h2
-                    class="text-md font-black font-poppins flex items-center gap-2 m-0 text-green-700"
-                  >
-                    <Icon name="material-symbols:fact-check" class="text-lg" />
-                    View Active Roster
-                  </h2>
-                </div>
-                <div
-                  class="w-8 h-8 rounded-full flex items-center justify-center transition-transform duration-300"
-                  :class="[
-                    isRosterReviewOpen ? 'rotate-180' : '',
-                    'bg-green-50 text-green-700',
-                  ]"
-                >
-                  <Icon
-                    name="material-symbols:keyboard-arrow-down"
-                    class="text-xl"
-                  />
-                </div>
-              </button>
-
-              <Transition name="accordion">
-                <div v-show="isRosterReviewOpen">
-                  <div class="border-t border-gray-100">
-                    <AdminRosterReview
-                      :eventId="selectedEvent.id"
-                      :proposal="currentRosterData"
-                      :isReadonly="true"
-                    />
-                  </div>
-                </div>
-              </Transition>
-            </section>
-          </div>
+            <div v-else class="pt-6">
+              <AdminRosterReview
+                :eventId="selectedEvent.id"
+                :proposal="currentRosterData"
+                :isReadonly="true"
+              />
+            </div>
+          </template>
         </div>
       </div>
     </main>
@@ -204,7 +110,7 @@ const loadActiveEvents = async () => {
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
   } catch (error) {
-    toast.error("Failed to load active events.");
+    toast.error("Couldn't load events. Check your connection and try again.");
     console.error(error);
   } finally {
     isLoadingEvents.value = false;
@@ -230,7 +136,9 @@ const selectEvent = async (event) => {
       currentRosterData.value = { proposedAssignments: data };
     }
   } catch (error) {
-    toast.error("Failed to load roster data.");
+    toast.error(
+      "Couldn't load the roster. Check your connection and try again.",
+    );
     console.error(error);
   } finally {
     isLoadingRoster.value = false;
@@ -252,19 +160,3 @@ onMounted(() => {
   loadActiveEvents();
 });
 </script>
-
-<style scoped>
-.animate-fade-in {
-  animation: fadeIn 0.4s ease-out forwards;
-}
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-</style>

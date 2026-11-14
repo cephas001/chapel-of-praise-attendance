@@ -1,44 +1,44 @@
 <template>
-  <div
-    class="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100"
-  >
+  <div class="border border-rule bg-white">
     <div
       v-if="!isCameraActive"
-      class="p-8 sm:p-12 flex flex-col items-center justify-center text-center bg-gray-50 border-b border-gray-100 min-h-75"
+      class="flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:p-8"
     >
       <button
+        type="button"
         @click="startCamera"
-        class="w-20 h-20 bg-black text-white rounded-full flex items-center justify-center mb-6 shadow-xl hover:scale-105 transition-all duration-200 border-4 border-gray-200 hover:border-gray-300"
+        aria-label="Start camera scanner"
+        class="flex h-14 w-14 shrink-0 items-center justify-center bg-ink text-white transition-colors hover:bg-black"
       >
-        <Icon name="material-symbols:qr-code-scanner" class="text-4xl" />
+        <Icon name="material-symbols:qr-code-scanner" class="text-2xl" />
       </button>
-      <h3 class="text-lg font-black text-black font-montserrat mb-2">
-        Camera Paused
-      </h3>
-      <p class="text-sm text-gray-500 font-medium max-w-xs">
-        Tap the button to activate the scanner. Keeping the camera paused saves
-        your device's battery and CPU.
-      </p>
+      <div class="min-w-0">
+        <h3 class="text-base font-semibold text-ink">Camera paused</h3>
+        <p class="mt-1 max-w-sm text-sm leading-relaxed text-muted">
+          Start the scanner when your post opens. Leaving it paused saves the
+          device's battery.
+        </p>
+      </div>
     </div>
 
-    <div v-else class="relative bg-black border-b border-gray-100">
-      <div class="absolute top-4 left-4 z-10">
-        <div
-          class="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-full flex items-center gap-2 border border-white/10"
-        >
-          <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-          <span
-            class="text-[10px] font-bold text-white uppercase tracking-widest"
-            >Live Feed</span
-          >
+    <div v-else class="relative bg-ink">
+      <div class="absolute left-4 top-4 z-10">
+        <div class="flex items-center gap-2 bg-ink/80 px-2.5 py-1.5">
+          <span class="h-1.5 w-1.5 rounded-[1px] bg-status-error"></span>
+          <span class="font-mono text-[11px] text-white">live camera</span>
         </div>
       </div>
 
-      <div v-if="hasTorch" class="absolute top-4 right-4 z-10 animate-fade-in">
+      <div v-if="hasTorch" class="absolute right-3 top-3 z-10">
         <button
+          type="button"
           @click="toggleTorch"
-          class="w-10 h-10 flex items-center justify-center bg-black/60 backdrop-blur-md rounded-full text-white border border-white/10 hover:bg-black/80 transition-colors shadow-lg active:scale-95"
+          class="flex h-11 w-11 items-center justify-center border border-white/20 bg-ink/80 text-white transition-colors hover:bg-ink"
           :title="isTorchOn ? 'Turn Flashlight Off' : 'Turn Flashlight On'"
+          :aria-label="
+            isTorchOn ? 'Turn flashlight off' : 'Turn flashlight on'
+          "
+          :aria-pressed="isTorchOn"
         >
           <Icon
             :name="
@@ -54,13 +54,13 @@
 
       <div id="reader" class="w-full min-h-75 sm:min-h-100"></div>
 
-      <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+      <div class="absolute bottom-4 left-1/2 z-10 -translate-x-1/2">
         <button
           @click="stopCamera"
-          class="px-6 py-2.5 bg-red-600/90 backdrop-blur-md text-white text-xs font-bold uppercase tracking-widest rounded-full shadow-lg border border-red-500 hover:bg-red-700 transition-colors flex items-center gap-2 active:scale-95"
+          class="led-btn border-white/40 bg-ink/85 text-white hover:bg-ink"
         >
           <Icon name="material-symbols:stop-circle" class="text-lg" />
-          Stop Scanner
+          Stop camera
         </button>
       </div>
     </div>
@@ -68,7 +68,7 @@
 </template>
 
 <script setup>
-import { ref, onBeforeUnmount, nextTick, watch } from "vue";
+import { ref, onBeforeUnmount, onMounted, nextTick, watch } from "vue";
 import { useAppToast } from "~/composables/useAppToast";
 
 const toast = useAppToast();
@@ -86,6 +86,7 @@ let html5QrCode = null;
 let activeVideoTrack = null;
 let isProcessing = false;
 let isStarting = false;
+let pausedForVisibility = false;
 
 let lastScannedText = "";
 let lastScannedTime = 0;
@@ -107,8 +108,12 @@ const startCamera = async () => {
     const { Html5Qrcode, Html5QrcodeSupportedFormats } =
       await import("html5-qrcode");
     html5QrCode = new Html5Qrcode("reader", {
+      // Uses the native BarcodeDetector (when the browser exposes it) so
+      // decoding runs in native code instead of the main-thread JS scanner.
       useBarCodeDetectorIfSupported: true,
       formatsToSupport: [
+        // Admin unlock codes are standard QR codes; student IDs stay 1D.
+        Html5QrcodeSupportedFormats.QR_CODE,
         Html5QrcodeSupportedFormats.CODE_128,
         Html5QrcodeSupportedFormats.CODE_39,
       ],
@@ -119,7 +124,15 @@ const startCamera = async () => {
   // select the most efficient native resolution for the rear camera.
   const config = {
     fps: 5,
-    qrbox: { width: 250, height: 150 },
+    // A square, viewfinder-relative box decodes QR codes without making the
+    // 1D barcode box too small on narrow phones.
+    qrbox: (viewfinderWidth, viewfinderHeight) => {
+      const edge = Math.max(
+        140,
+        Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.72),
+      );
+      return { width: edge, height: edge };
+    },
   };
 
   try {
@@ -210,8 +223,56 @@ const stopCamera = async () => {
   hasTorch.value = false;
   activeVideoTrack = null;
   isProcessing = false;
+  pausedForVisibility = false;
   emit("cameraStateChanged", false);
 };
+
+// Stop decoding and mute the camera track while the user is in another app,
+// then resume exactly where we left off when the page becomes visible again.
+const pauseForVisibility = async () => {
+  if (!isCameraActive.value) return;
+
+  if (activeVideoTrack) activeVideoTrack.enabled = false;
+
+  if (html5QrCode?.isScanning && html5QrCode.getState() === 2) {
+    try {
+      await html5QrCode.pause(true);
+      pausedForVisibility = true;
+    } catch (error) {
+      console.warn("Failed to pause camera for background tab:", error);
+    }
+  }
+};
+
+const resumeFromVisibility = async () => {
+  if (activeVideoTrack) activeVideoTrack.enabled = true;
+
+  if (
+    pausedForVisibility &&
+    isCameraActive.value &&
+    html5QrCode?.getState() === 3
+  ) {
+    try {
+      await html5QrCode.resume();
+    } catch (error) {
+      console.warn("Failed to resume camera after background tab:", error);
+    }
+  }
+
+  pausedForVisibility = false;
+};
+
+const handleVisibilityChange = () => {
+  if (document.visibilityState === "hidden") {
+    pauseForVisibility();
+  } else {
+    resumeFromVisibility();
+  }
+};
+
+onMounted(() => {
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+});
 
 watch(
   () => props.forceStop,
@@ -223,13 +284,14 @@ watch(
 );
 
 onBeforeUnmount(async () => {
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
   await stopCamera();
 });
 </script>
 
 <style scoped>
 .animate-fade-in {
-  animation: fadeIn 0.4s ease-out forwards;
+  animation: fadeIn 180ms ease-out forwards;
 }
 @keyframes fadeIn {
   from {

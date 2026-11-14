@@ -1,139 +1,163 @@
 <template>
   <div
     v-if="showPrompt"
-    class="fixed bottom-6 inset-x-0 mx-auto z-[90] animate-slide-up w-[calc(100%-3rem)] max-w-sm"
+    role="complementary"
+    aria-label="Install COPAMS"
+    class="fixed inset-x-0 bottom-4 z-install mx-auto w-[calc(100%-2rem)] max-w-sm animate-slide-up"
   >
-    <div
-      class="bg-black/90 backdrop-blur-xl text-white p-5 rounded-2xl shadow-2xl border border-gray-800 flex flex-col gap-4"
-    >
-      <div class="flex justify-between items-start">
-        <div class="flex items-center gap-3">
-          <div
-            class="bg-white text-black w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-          >
-            <Icon name="material-symbols:token" class="text-xl" />
-          </div>
-          <div class="flex flex-col">
-            <span class="text-sm font-black font-montserrat tracking-wide"
-              >Install COP Scanner</span
-            >
-            <span class="text-xs text-gray-400 font-medium mt-0.5"
-              >Use it offline, anywhere.</span
-            >
-          </div>
-        </div>
-        <button
-          @click="dismissPrompt"
-          class="text-gray-500 hover:text-white transition-colors p-1"
-        >
-          <Icon name="material-symbols:close" class="text-lg" />
-        </button>
+    <div class="flex items-stretch border border-ink bg-ink text-white">
+      <div class="flex w-11 shrink-0 items-center justify-center bg-white text-ink">
+        <Icon name="material-symbols:token" class="text-lg" />
+      </div>
+
+      <div class="min-w-0 flex-1 px-4 py-3">
+        <p class="text-[13px] font-semibold leading-tight">Install COPAMS</p>
+        <p class="mt-0.5 truncate font-mono text-[11px] text-white/60">
+          {{
+            isIOS
+              ? "share, then add to home screen"
+              : "works offline, anywhere"
+          }}
+        </p>
       </div>
 
       <button
         v-if="!isIOS"
+        type="button"
         @click="installApp"
-        class="w-full bg-white text-black py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
+        class="shrink-0 px-4 font-mono text-[11px] text-white/80 transition-colors hover:bg-white/10 hover:text-white"
       >
-        <Icon name="material-symbols:download" class="text-lg" />
-        Install App
+        install
       </button>
 
-      <div
-        v-else
-        class="bg-gray-900 rounded-xl p-3 text-xs text-gray-300 font-medium leading-relaxed border border-gray-800"
+      <button
+        type="button"
+        @click="dismissPrompt"
+        aria-label="Dismiss install prompt"
+        class="flex w-11 shrink-0 items-center justify-center text-white/50 transition-colors hover:bg-white/10 hover:text-white"
       >
-        To install on iOS: tap the
-        <span
-          class="inline-flex items-center justify-center bg-gray-800 p-1 rounded mx-1"
-          ><Icon name="material-symbols:ios-share" class="text-sm"
-        /></span>
-        <strong>Share</strong> icon below, then select
-        <strong>Add to Home Screen</strong>.
-      </div>
+        <Icon name="material-symbols:close" class="text-lg" />
+      </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { useAppToast } from "~/composables/useAppToast";
+import { useAuth } from "~/composables/useAuth";
+import { useOverlayState } from "~/composables/useOverlayState";
+
+const route = useRoute();
+const { token } = useAuth();
+const { toasts } = useAppToast();
+const { hasOverlay } = useOverlayState();
+
+const SNOOZE_MS = 7 * 24 * 60 * 60 * 1000;
 
 const showPrompt = ref(false);
 const deferredPrompt = ref(null);
 const isIOS = ref(false);
+const isStandalone = ref(false);
+const isDismissed = ref(false);
 let timer = null;
 
+// Keep the install prompt away from the scanner: it must never cover the
+// camera controls while an usher is working.
+const canTrigger = computed(
+  () =>
+    Boolean(token.value) &&
+    ["/inbox", "/profile"].includes(route.path) &&
+    !hasOverlay.value &&
+    toasts.value.length === 0 &&
+    !isStandalone.value &&
+    !isDismissed.value &&
+    (isIOS.value || deferredPrompt.value),
+);
+
+watch(
+  canTrigger,
+  (eligible) => {
+    if (timer) clearTimeout(timer);
+
+    if (!eligible) {
+      showPrompt.value = false;
+      return;
+    }
+
+    timer = setTimeout(() => {
+      if (canTrigger.value) showPrompt.value = true;
+    }, 3000);
+  },
+  { immediate: true },
+);
+
 const handleBeforeInstallPrompt = (e) => {
-  // Prevent Chrome 67 and earlier from automatically showing the prompt
+  // Prevent the browser's automatic mini-infobar and keep the event so the
+  // custom prompt can trigger it later.
   e.preventDefault();
-  // Stash the event so it can be triggered later.
   deferredPrompt.value = e;
+};
+
+const handleAppInstalled = () => {
+  showPrompt.value = false;
+  deferredPrompt.value = null;
+  isStandalone.value = true;
 };
 
 const dismissPrompt = () => {
   showPrompt.value = false;
-  // Save to localStorage so we don't annoy them again for 7 days
-  const expiry = new Date().getTime() + 7 * 24 * 60 * 60 * 1000;
-  localStorage.setItem("pwa-dismissed-until", expiry.toString());
+  isDismissed.value = true;
+
+  // Do not show the prompt again for 7 days.
+  localStorage.setItem(
+    "pwa-dismissed-until",
+    (Date.now() + SNOOZE_MS).toString(),
+  );
 };
 
 const installApp = async () => {
   if (!deferredPrompt.value) return;
 
-  // Show the native browser install prompt
   deferredPrompt.value.prompt();
 
-  // Wait for the user to respond to the prompt
   const { outcome } = await deferredPrompt.value.userChoice;
   if (outcome === "accepted") {
     showPrompt.value = false;
+    isStandalone.value = true;
   }
 
-  // We've used the prompt, and can't use it again, throw it away
+  // A beforeinstallprompt event can only be used once.
   deferredPrompt.value = null;
 };
 
 onMounted(() => {
   if (!import.meta.client) return;
 
-  // 1. Check if the app is already installed (running in standalone mode)
-  const isStandalone = window.matchMedia("(display-mode: standalone)").matches;
-  if (isStandalone) return;
+  isStandalone.value = window.matchMedia(
+    "(display-mode: standalone)",
+  ).matches;
 
-  // 2. Check if the user recently dismissed the prompt
   const dismissedUntil = localStorage.getItem("pwa-dismissed-until");
-  if (dismissedUntil && new Date().getTime() < parseInt(dismissedUntil)) return;
+  isDismissed.value =
+    Boolean(dismissedUntil) && Date.now() < Number(dismissedUntil);
 
-  // 3. Detect if the user is on an iPhone/iPad
   const userAgent = window.navigator.userAgent.toLowerCase();
   isIOS.value = /iphone|ipad|ipod/.test(userAgent);
 
-  // 4. Listen for the native install prompt event (Android/Desktop)
   window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
-
-  // 5. Start the 8-second delay timer
-  timer = setTimeout(() => {
-    // If it's iOS (where beforeinstallprompt doesn't exist), OR if we successfully caught the Android prompt
-    if (isIOS.value || deferredPrompt.value) {
-      showPrompt.value = true;
-    }
-  }, 3000);
-
-  // 6. Listen for successful installation to hide the UI
-  window.addEventListener("appinstalled", () => {
-    showPrompt.value = false;
-    deferredPrompt.value = null;
-  });
+  window.addEventListener("appinstalled", handleAppInstalled);
 });
 
 onBeforeUnmount(() => {
-  if (import.meta.client) {
-    window.removeEventListener(
-      "beforeinstallprompt",
-      handleBeforeInstallPrompt,
-    );
-    if (timer) clearTimeout(timer);
-  }
+  if (!import.meta.client) return;
+
+  window.removeEventListener(
+    "beforeinstallprompt",
+    handleBeforeInstallPrompt,
+  );
+  window.removeEventListener("appinstalled", handleAppInstalled);
+  if (timer) clearTimeout(timer);
 });
 </script>
 

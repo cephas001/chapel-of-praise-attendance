@@ -1,81 +1,67 @@
 <template>
   <section
-    class="bg-white rounded-2xl border border-gray-200 shadow-sm transition-all duration-200 overflow-hidden mb-6"
+    class="bg-white rounded-none border border-rule transition-colors duration-200 overflow-hidden"
   >
     <button
       @click="isOpen = !isOpen"
-      class="w-full p-6 sm:p-8 flex justify-between items-center bg-black text-white hover:bg-gray-900 transition-colors focus:outline-none"
+      class="w-full p-6 sm:p-8 flex justify-between items-center bg-white hover:bg-inset transition-colors"
     >
       <div class="flex items-center gap-3">
-        <div
-          class="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center shrink-0"
-        >
-          <Icon name="material-symbols:campaign" class="text-xl text-white" />
-        </div>
         <div class="text-left">
-          <h2
-            class="text-md font-black font-poppins m-0 tracking-wide uppercase"
-          >
-            Live Broadcast
-          </h2>
-          <p
-            class="text-[10px] text-gray-400 font-medium tracking-widest uppercase mt-0.5"
-          >
-            Live Alerts & Inbox
+          <h2 class="led-display m-0 text-[20px]">Broadcast</h2>
+          <p class="text-xs text-gray-700 font-medium mt-0.5">
+            Alerts and inbox
           </p>
         </div>
       </div>
       <div
-        class="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center transition-transform duration-300 shrink-0"
+        class="w-8 h-8 rounded-[2px] bg-inset flex items-center justify-center transition-transform duration-300 shrink-0"
         :class="{ 'rotate-180': isOpen }"
       >
         <Icon
           name="material-symbols:keyboard-arrow-down"
-          class="text-xl text-white"
+          class="text-xl text-ink"
         />
       </div>
     </button>
 
     <Transition name="accordion">
-      <div v-show="isOpen">
-        <div class="p-6 sm:p-8 bg-gray-50/50">
-          <form @submit.prevent="sendBroadcast" class="space-y-6">
+      <div v-if="isOpen">
+        <div class="p-6 sm:p-8 bg-inset/50 mt-2">
+          <form @submit.prevent="sendBroadcast" class="space-y-5">
             <div class="space-y-3">
               <div class="flex justify-between items-center">
-                <label
-                  class="text-[0.75rem] font-bold uppercase tracking-wider text-gray-500 font-poppins"
-                >
-                  Recipient Target
+                <label class="text-xs font-semibold text-muted font-mono">
+                  Recipient
                 </label>
                 <Icon
                   v-if="isLoadingUsers"
                   name="material-symbols:sync"
-                  class="animate-spin text-gray-400 text-sm"
+                  class="animate-spin text-muted text-sm"
                 />
               </div>
 
-              <div class="flex gap-2 p-1 bg-gray-200/70 rounded-xl">
+              <div class="flex gap-2 p-1 bg-inset rounded-md">
                 <button
                   type="button"
                   @click="targetMode = 'ALL'"
-                  class="flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all font-poppins flex items-center justify-center gap-2"
+                  class="flex-1 py-2.5 rounded-md text-xs font-semibold transition-colors font-sans flex items-center justify-center gap-2"
                   :class="
                     targetMode === 'ALL'
-                      ? 'bg-white shadow-sm text-black'
-                      : 'text-gray-500 hover:text-black'
+                      ? 'bg-white text-ink'
+                      : 'text-muted hover:text-ink'
                   "
                 >
-                  <Icon name="material-symbols:group" class="text-lg" />
                   All
                 </button>
                 <button
                   type="button"
                   @click="targetMode = 'SPECIFIC'"
-                  class="flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all font-poppins flex items-center justify-center gap-2"
+                  class="flex-1 py-2.5 rounded-md text-xs font-semibold transition-colors font-sans flex items-center justify-center gap-2"
                   :class="
                     targetMode === 'SPECIFIC'
-                      ? 'bg-white shadow-sm text-black'
-                      : 'text-gray-500 hover:text-black'
+                      ? 'bg-white text-ink'
+                      : 'text-muted hover:text-ink'
                   "
                 >
                   <Icon name="material-symbols:person-search" class="text-lg" />
@@ -86,10 +72,10 @@
 
             <div
               v-if="targetMode === 'SPECIFIC'"
-              class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm animate-fade-in"
+              class="bg-white border border-rule rounded-none overflow-hidden animate-fade-in"
             >
               <div
-                class="p-4 border-b border-gray-100 flex flex-col sm:flex-row gap-3 bg-gray-50"
+                class="p-4 border-b border-rule flex flex-col sm:flex-row gap-3 bg-inset"
               >
                 <div class="relative flex-grow">
                   <div
@@ -97,19 +83,19 @@
                   >
                     <Icon
                       name="material-symbols:search"
-                      class="text-gray-400 text-lg"
+                      class="text-muted text-lg"
                     />
                   </div>
                   <input
                     v-model="searchQuery"
                     type="text"
                     placeholder="Search personnel..."
-                    class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-xs font-poppins focus:border-black outline-none transition-colors"
+                    class="w-full pl-10 pr-4 py-2 border border-rule-strong text-xs font-sans transition-colors focus-visible:border-chapel"
                   />
                 </div>
                 <select
                   v-model="sortOrder"
-                  class="border border-gray-300 rounded-lg px-3 py-2 text-xs font-poppins bg-white focus:border-black outline-none cursor-pointer min-w-[130px]"
+                  class="border border-rule-strong px-3 py-2 text-xs font-sans bg-white focus-visible:border-chapel cursor-pointer min-w-[130px]"
                 >
                   <option value="name_asc">Name (A-Z)</option>
                   <option value="name_desc">Name (Z-A)</option>
@@ -119,20 +105,27 @@
 
               <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
-                  <tbody class="divide-y divide-gray-100">
+                  <tbody class="divide-y divide-rule">
                     <tr
                       v-for="user in paginatedUsers"
                       :key="user.id"
+                      role="checkbox"
+                      tabindex="0"
+                      :aria-checked="selectedUsers.includes(user.id)"
+                      :aria-label="`Select ${user.username}`"
                       @click="toggleUserSelection(user.id)"
-                      class="hover:bg-blue-50/50 transition-colors cursor-pointer group"
+                      @keydown.enter.prevent="toggleUserSelection(user.id)"
+                      @keydown.space.prevent="toggleUserSelection(user.id)"
+                      class="hover:bg-inset/60 focus-visible:bg-inset/60 transition-colors cursor-pointer group"
                     >
                       <td class="p-3 pl-4 w-10">
                         <div
-                          class="w-5 h-5 rounded border flex items-center justify-center transition-colors"
+                          aria-hidden="true"
+                          class="w-5 h-5 rounded-sm border flex items-center justify-center transition-colors"
                           :class="
                             selectedUsers.includes(user.id)
-                              ? 'bg-blue-600 border-blue-600'
-                              : 'border-gray-300 group-hover:border-blue-400 bg-white'
+                              ? 'bg-chapel border-chapel'
+                              : 'border-rule-strong group-hover:border-chapel bg-white'
                           "
                         >
                           <Icon
@@ -144,22 +137,24 @@
                       </td>
                       <td class="p-3">
                         <span
-                          class="font-bold text-sm font-poppins text-black block"
+                          class="font-semibold text-xs md:text-sm font-sans text-ink block"
                           >{{ user.username }}</span
                         >
                       </td>
                       <td class="p-3 text-right pr-4">
                         <span
-                          class="px-2 py-1 bg-gray-100 rounded text-[10px] font-bold text-gray-500 uppercase tracking-widest"
+                          class="px-2 py-1 bg-inset rounded-[2px] text-[11px] md:text-xs font-medium text-muted capitalize"
                         >
-                          {{ user.unit }}
+                          {{
+                            (user.unit || "").replace(/_/g, " ").toLowerCase()
+                          }}
                         </span>
                       </td>
                     </tr>
                     <tr v-if="paginatedUsers.length === 0">
                       <td
                         colspan="3"
-                        class="p-6 text-center text-xs text-gray-400 font-medium font-poppins"
+                        class="p-6 text-center text-xs text-muted font-medium font-sans"
                       >
                         No users found matching "{{ searchQuery }}"
                       </td>
@@ -169,12 +164,12 @@
               </div>
 
               <div
-                class="p-3 border-t border-gray-100 bg-gray-50 flex justify-between items-center"
+                class="p-3 border-t border-rule bg-inset flex justify-between items-center"
               >
                 <span
-                  class="text-[10px] font-bold uppercase tracking-widest text-blue-600 font-poppins"
+                  class="text-xs font-semibold text-status-info font-sans pl-1"
                 >
-                  {{ selectedUsers.length }} Selected
+                  {{ selectedUsers.length }} selected
                 </span>
 
                 <div v-if="totalPages > 1" class="flex items-center gap-2">
@@ -182,25 +177,27 @@
                     type="button"
                     @click="currentPage--"
                     :disabled="currentPage === 1"
-                    class="w-7 h-7 flex items-center justify-center rounded border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 transition-all"
+                    aria-label="Previous page"
+                    class="w-7 h-7 flex items-center justify-center rounded-md border border-rule bg-white hover:bg-inset disabled:opacity-50 transition-colors"
                   >
                     <Icon
                       name="material-symbols:chevron-left"
-                      class="text-gray-600"
+                      class="text-muted"
                     />
                   </button>
-                  <span class="text-[10px] font-bold text-gray-500">
+                  <span class="text-xs font-medium text-muted font-mono">
                     {{ currentPage }} / {{ totalPages }}
                   </span>
                   <button
                     type="button"
                     @click="currentPage++"
                     :disabled="currentPage === totalPages"
-                    class="w-7 h-7 flex items-center justify-center rounded border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-50 transition-all"
+                    aria-label="Next page"
+                    class="w-7 h-7 flex items-center justify-center rounded-md border border-rule bg-white hover:bg-inset disabled:opacity-50 transition-colors"
                   >
                     <Icon
                       name="material-symbols:chevron-right"
-                      class="text-gray-600"
+                      class="text-muted"
                     />
                   </button>
                 </div>
@@ -208,46 +205,38 @@
             </div>
 
             <div class="space-y-2">
-              <label
-                class="text-[0.75rem] font-bold uppercase tracking-wider text-gray-500 font-poppins"
-                >Message Title</label
+              <label class="text-xs font-semibold text-muted font-sans"
+                >Message title</label
               >
               <input
                 v-model="payload.title"
                 type="text"
                 placeholder="e.g. Deployment Alert or Section A Full"
                 required
-                class="w-full border border-gray-300 focus:border-black rounded-xl py-3 px-4 text-black font-poppins outline-none shadow-sm"
+                class="w-full border border-rule-strong mt-1 py-3 px-4 text-ink font-sans focus-visible:border-chapel text-xs md:text-xs"
               />
             </div>
 
             <div class="space-y-2">
-              <label
-                class="text-[0.75rem] font-bold uppercase tracking-wider text-gray-500 font-poppins"
-                >Message Body</label
+              <label class="text-xs font-semibold text-muted font-sans"
+                >Message body</label
               >
               <textarea
                 v-model="payload.body"
-                rows="3"
+                rows="4"
                 placeholder="Type your message here..."
                 required
-                class="w-full border border-gray-300 focus:border-black rounded-xl py-3 px-4 text-black font-poppins outline-none resize-none shadow-sm"
+                class="w-full border border-rule-strong text-xs md:text-sm py-3 px-4 text-ink font-sans resize-none focus-visible:border-chapel mt-1"
               ></textarea>
             </div>
 
-            <div class="pt-2">
+            <div>
               <button
                 type="submit"
                 :disabled="isSubmitDisabled"
-                class="w-full bg-black text-white font-bold font-poppins py-4 rounded-xl shadow-md hover:bg-gray-900 active:scale-[0.98] flex justify-center items-center gap-2 uppercase tracking-widest text-sm disabled:opacity-50 transition-all"
+                class="w-full bg-chapel text-white font-semibold font-sans py-4 hover:bg-chapel-strong active:scale-[0.99] flex justify-center items-center gap-2 text-sm disabled:opacity-50 transition-colors"
               >
-                <Icon
-                  v-if="isSending"
-                  name="material-symbols:sync"
-                  class="animate-spin text-lg"
-                />
-                <Icon v-else name="material-symbols:send" class="text-lg" />
-                {{ isSending ? "Dispatching..." : "Dispatch Message" }}
+                {{ isSending ? "Sending…" : "Send message" }}
               </button>
             </div>
           </form>
@@ -262,7 +251,13 @@ import { ref, computed, watch, onMounted } from "vue";
 import { useAppToast } from "~/composables/useAppToast";
 
 const toast = useAppToast();
-const isOpen = ref(false);
+const props = defineProps({
+  defaultOpen: {
+    type: Boolean,
+    default: false,
+  },
+});
+const isOpen = ref(props.defaultOpen);
 const isSending = ref(false);
 const isLoadingUsers = ref(false);
 
@@ -395,7 +390,9 @@ onMounted(() => {
 <style scoped>
 .accordion-enter-active,
 .accordion-leave-active {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   max-height: 1000px;
   opacity: 1;
   overflow: hidden;
@@ -406,7 +403,7 @@ onMounted(() => {
   opacity: 0;
 }
 .animate-fade-in {
-  animation: fadeIn 0.3s ease-out forwards;
+  animation: fadeIn 180ms ease-out forwards;
 }
 @keyframes fadeIn {
   from {

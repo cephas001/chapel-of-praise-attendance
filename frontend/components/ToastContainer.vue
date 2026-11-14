@@ -1,39 +1,40 @@
 <template>
   <div
-    class="fixed bottom-10 right-0 z-9999 flex flex-col gap-3 max-w-sm w-full pointer-events-none px-4 sm:px-0"
+    role="region"
+    aria-label="Notifications"
+    aria-live="polite"
+    class="pointer-events-none fixed bottom-[calc(3rem+env(safe-area-inset-bottom))] right-0 z-toast flex w-full max-w-sm flex-col gap-2 px-4 sm:bottom-8 sm:px-0 sm:pr-4"
   >
     <TransitionGroup name="toast">
       <div
         v-for="toast in toasts"
         :key="toast.id"
-        class="pointer-events-auto overflow-hidden rounded-xl shadow-xl border bg-white flex items-stretch"
-        :class="borderColors[toast.type]"
+        role="status"
+        class="pointer-events-auto flex items-stretch border border-rule bg-surface shadow-lg"
       >
-        <div
-          class="p-4 flex items-center justify-center shrink-0"
-          :class="bgColors[toast.type]"
-        >
+        <span class="w-[3px] shrink-0" :class="bars[toast.type]"></span>
+
+        <div class="flex min-w-0 flex-1 items-start gap-3 px-4 py-3">
           <Icon
             :name="icons[toast.type]"
-            class="text-2xl"
-            :class="iconColors[toast.type]"
+            class="mt-0.5 shrink-0 text-lg"
+            :class="colors[toast.type]"
           />
-        </div>
-
-        <div class="py-3 px-4 flex-grow flex flex-col justify-center">
-          <h4
-            class="text-sm font-black font-poppins text-gray-900 leading-tight"
-          >
-            {{ toast.title }}
-          </h4>
-          <p class="text-xs text-gray-500 font-medium mt-0.5 leading-snug">
-            {{ toast.message }}
-          </p>
+          <div class="min-w-0">
+            <p class="text-sm font-semibold leading-tight text-ink">
+              {{ toast.title }}
+            </p>
+            <p class="mt-0.5 text-xs leading-snug text-muted">
+              {{ toast.message }}
+            </p>
+          </div>
         </div>
 
         <button
+          type="button"
           @click="remove(toast.id)"
-          class="px-4 text-gray-400 hover:text-black transition-colors focus:outline-none"
+          aria-label="Dismiss notification"
+          class="flex w-11 shrink-0 items-center justify-center text-muted transition-colors hover:bg-inset hover:text-ink"
         >
           <Icon name="material-symbols:close" class="text-lg" />
         </button>
@@ -47,24 +48,20 @@ import { useAppToast } from "~/composables/useAppToast";
 
 const { toasts, remove } = useAppToast();
 
-// Dictionaries to map the toast 'type' to specific Tailwind classes
-const borderColors = {
-  success: "border-green-200",
-  error: "border-red-200",
-  info: "border-blue-200",
-  warning: "border-orange-300", // NEW
+// Toasts borrow the same status tones as badges, so a red toast and a red
+// badge always mean the same thing. A 3px rule carries the tone; the body
+// stays on the same paper as the rest of the interface.
+const bars = {
+  success: "bg-status-success",
+  error: "bg-status-error",
+  info: "bg-status-info",
+  warning: "bg-status-syncing",
 };
-const bgColors = {
-  success: "bg-green-50",
-  error: "bg-red-50",
-  info: "bg-blue-50",
-  warning: "bg-orange-50", // NEW
-};
-const iconColors = {
-  success: "text-green-600",
-  error: "text-red-600",
-  info: "text-blue-600",
-  warning: "text-orange-600", // NEW
+const colors = {
+  success: "text-status-success",
+  error: "text-status-error",
+  info: "text-status-info",
+  warning: "text-status-syncing",
 };
 const icons = {
   success: "material-symbols:check-circle",
@@ -78,7 +75,9 @@ const icons = {
 /* Smooth slide-in-from-right animation */
 .toast-enter-active,
 .toast-leave-active {
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .toast-enter-from {
   opacity: 0;

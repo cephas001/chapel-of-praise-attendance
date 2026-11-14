@@ -2,29 +2,36 @@
   <Teleport to="body">
     <div
       v-if="isOpen"
-      class="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in"
+      class="fixed inset-0 z-modal flex items-center justify-center bg-ink/80 p-4"
     >
       <div
-        class="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-zoom-in flex flex-col"
+        ref="modalRef"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="crop-picture-title"
+        tabindex="-1"
+        class="flex w-full max-w-md flex-col border border-rule bg-canvas"
       >
         <div
-          class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50"
+          class="flex items-center justify-between border-b border-rule px-5 py-4"
         >
-          <h3 class="text-lg font-black font-poppins text-black">
-            Crop Picture
+          <h3 id="crop-picture-title" class="led-display text-[22px]">
+            Crop picture
           </h3>
           <button
+            type="button"
             @click="$emit('close')"
-            class="p-1 text-gray-400 hover:text-black hover:bg-gray-200 rounded-full transition-colors"
+            aria-label="Close crop picture dialog"
+            class="flex h-11 w-11 items-center justify-center text-muted transition-colors hover:bg-inset hover:text-ink"
           >
             <Icon name="material-symbols:close" class="text-xl" />
           </button>
         </div>
 
-        <div class="w-full h-80 bg-gray-900 relative">
+        <div class="relative h-80 w-full bg-ink">
           <cropper
             ref="cropperRef"
-            class="w-full h-full"
+            class="h-full w-full"
             :src="imageUrl"
             :stencil-component="CircleStencil"
             :stencil-props="{
@@ -34,22 +41,22 @@
           />
         </div>
 
-        <div class="p-6 bg-gray-50 flex justify-between items-center">
-          <p
-            class="text-[10px] text-gray-500 font-bold uppercase tracking-widest"
-          >
-            Pinch to zoom / Drag to move
-          </p>
-          <div class="flex gap-3">
+        <div
+          class="flex items-center justify-between gap-4 border-t border-rule px-5 py-4"
+        >
+          <p class="led-eyebrow">pinch to zoom, drag to move</p>
+          <div class="flex items-center gap-2">
             <button
+              type="button"
               @click="$emit('close')"
-              class="px-5 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest text-gray-500 hover:bg-gray-200 transition-colors"
+              class="led-btn led-btn-quiet"
             >
               Cancel
             </button>
             <button
+              type="button"
               @click="handleCrop"
-              class="px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-widest bg-black text-white hover:bg-gray-900 transition-colors"
+              class="led-btn led-btn-primary"
             >
               Apply
             </button>
@@ -61,9 +68,10 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, toRef } from "vue";
 import { Cropper, CircleStencil } from "vue-advanced-cropper";
 import "vue-advanced-cropper/dist/style.css";
+import { useModalA11y } from "~/composables/useModalA11y";
 
 const props = defineProps({
   isOpen: { type: Boolean, default: false },
@@ -71,7 +79,13 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["close", "crop"]);
+const isOpen = toRef(props, "isOpen");
+const modalRef = ref(null);
 const cropperRef = ref(null);
+
+useModalA11y(isOpen, modalRef, {
+  onClose: () => emit("close"),
+});
 
 const handleCrop = () => {
   if (cropperRef.value) {
@@ -92,7 +106,7 @@ const handleCrop = () => {
 
 <style scoped>
 .animate-fade-in {
-  animation: fadeIn 0.2s ease-out forwards;
+  animation: fadeIn 180ms ease-out forwards;
 }
 @keyframes fadeIn {
   from {

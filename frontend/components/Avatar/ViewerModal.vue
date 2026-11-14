@@ -2,30 +2,36 @@
   <Teleport to="body">
     <div
       v-if="isOpen"
-      class="fixed inset-0 z-100 flex items-center justify-center bg-black/60 backdrop-blur-3xl p-4 animate-fade-in"
+      class="fixed inset-0 z-modal flex items-center justify-center bg-ink p-4"
       @click.self="$emit('close')"
     >
-      <div class="relative animate-zoom-in flex flex-col items-center gap-4">
+      <div
+        ref="modalRef"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Profile picture preview"
+        tabindex="-1"
+        class="relative flex flex-col items-center"
+      >
         <div
-          class="w-72 h-72 sm:w-96 sm:h-96 rounded-full border-4 border-white shadow-2xl bg-gray-100 flex items-center justify-center overflow-hidden"
+          class="flex h-72 w-72 items-center justify-center overflow-hidden border border-white/20 bg-white/5 text-white/60 sm:h-96 sm:w-96"
         >
           <img
             v-if="imageUrl"
             :src="imageUrl"
             alt="Expanded Profile"
-            class="w-full h-full object-cover"
+            class="h-full w-full object-cover"
           />
-          <span
-            v-else
-            class="text-6xl font-black text-gray-300 font-montserrat uppercase"
-          >
+          <span v-else class="text-6xl font-medium uppercase">
             {{ fallbackInitials }}
           </span>
         </div>
 
         <button
+          type="button"
           @click="$emit('close')"
-          class="absolute -top-12 sm:top-0 right-0 sm:-right-12 p-2 bg-white/20 text-white hover:bg-white/40 rounded-full transition-colors z-50 backdrop-blur-md flex items-center justify-center"
+          aria-label="Close profile picture preview"
+          class="absolute -right-2 -top-12 flex h-11 w-11 items-center justify-center border border-white/20 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
         >
           <Icon name="material-symbols:close" class="text-xl" />
         </button>
@@ -35,7 +41,10 @@
 </template>
 
 <script setup>
-defineProps({
+import { ref, toRef } from "vue";
+import { useModalA11y } from "~/composables/useModalA11y";
+
+const props = defineProps({
   isOpen: {
     type: Boolean,
     default: false,
@@ -50,12 +59,18 @@ defineProps({
   },
 });
 
-defineEmits(["close"]);
+const emit = defineEmits(["close"]);
+const isOpen = toRef(props, "isOpen");
+const modalRef = ref(null);
+
+useModalA11y(isOpen, modalRef, {
+  onClose: () => emit("close"),
+});
 </script>
 
 <style scoped>
 .animate-fade-in {
-  animation: fadeIn 0.2s ease-out forwards;
+  animation: fadeIn 180ms ease-out forwards;
 }
 @keyframes fadeIn {
   from {

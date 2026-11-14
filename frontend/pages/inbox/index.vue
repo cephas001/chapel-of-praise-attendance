@@ -1,109 +1,103 @@
 <template>
-  <div class="min-h-screen bg-gray-50 text-gray-900 font-sans pb-24">
-    <main class="pt-8 p-6 lg:px-8 max-w-4xl mx-auto">
-      <header
-        class="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4"
-      >
-        <div>
-          <h1
-            class="text-4xl sm:text-5xl font-black tracking-tighter text-black mb-2 uppercase font-montserrat flex items-center gap-3"
+  <div class="min-h-screen bg-canvas pb-24 font-sans text-ink">
+    <main class="mx-auto max-w-4xl px-5 pt-6 sm:px-8">
+      <LedgerPageHeader eyebrow="messages" title="Inbox">
+        <template #actions>
+          <button
+            type="button"
+            @click="loadInbox"
+            class="led-eyebrow inline-flex min-h-11 items-center gap-1.5 py-2 transition-colors hover:text-ink"
+            aria-label="Refresh inbox"
           >
-            <Icon name="material-symbols:inbox" />
-            Inbox
-          </h1>
-          <p class="text-gray-500 font-poppins tracking-wide">
-            Your personal alerts and updates.
+            <Icon name="material-symbols:refresh" class="text-base" />
+            refresh
+          </button>
+        </template>
+      </LedgerPageHeader>
+
+      <div class="mt-8 max-w-3xl">
+        <div v-if="inbox.length === 0" class="py-6">
+          <p class="led-eyebrow">no messages</p>
+          <h2 class="led-display mt-2 text-[28px]">You're all caught up.</h2>
+          <p class="mt-3 max-w-sm text-sm leading-relaxed text-muted">
+            Announcements from your admin will land here. Records and scans are
+            unaffected.
           </p>
         </div>
-        <div class="flex items-center gap-3">
-          <button
-            @click="loadInbox"
-            class="p-2 bg-white border border-gray-200 rounded-full shadow-sm hover:bg-gray-50 transition-colors flex items-center justify-center"
-            title="Refresh Inbox"
+
+        <div v-else class="border-t border-rule">
+          <article
+            v-for="message in inbox"
+            :key="message.id"
+            class="border-b border-rule py-5"
           >
-            <Icon
-              name="material-symbols:refresh"
-              class="text-xl text-gray-700"
-            />
-          </button>
-        </div>
-      </header>
-
-      <div
-        v-if="inbox.length === 0"
-        class="bg-white rounded-2xl border border-gray-100 p-12 shadow-sm flex flex-col items-center justify-center text-center h-75"
-      >
-        <div
-          class="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4 text-gray-300"
-        >
-          <Icon
-            name="material-symbols:mark-email-read-outline"
-            class="text-3xl"
-          />
-        </div>
-        <h2 class="text-xl font-black text-black font-montserrat mb-2">
-          You're all caught up!
-        </h2>
-        <p class="text-sm text-gray-500 max-w-xs font-poppins">
-          No messages in your inbox right now.
-        </p>
-      </div>
-
-      <div v-else class="space-y-4">
-        <div
-          v-for="message in inbox"
-          :key="message.id"
-          class="bg-white rounded-2xl p-6 shadow-sm border transition-all duration-200"
-          :class="
-            message.is_read
-              ? 'border-gray-100 opacity-75'
-              : 'border-blue-200 border-l-4 border-l-blue-600'
-          "
-        >
-          <div class="flex justify-between items-start gap-4">
-            <div class="grow">
-              <div class="flex items-center gap-2 mb-1">
+            <div class="flex items-start justify-between gap-4">
+              <div class="flex min-w-0 items-start gap-3">
                 <span
-                  v-if="!message.is_read"
-                  class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"
+                  class="mt-2 h-1.5 w-1.5 shrink-0 rounded-[1px]"
+                  :class="message.is_read ? 'bg-rule-strong' : 'bg-chapel'"
                 ></span>
                 <h3
-                  class="text-lg font-black font-poppins text-black"
-                  :class="{ 'text-gray-600': message.is_read }"
+                  class="text-[15px] font-semibold leading-snug"
+                  :class="message.is_read ? 'text-muted' : 'text-ink'"
                 >
                   {{ message.title }}
                 </h3>
               </div>
-              <p
-                class="text-sm text-gray-600 font-poppins leading-relaxed mt-2"
-              >
-                {{ message.body }}
-              </p>
-              <p
-                class="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-4"
-              >
-                {{ new Date(message.created_at).toLocaleString() }}
+
+              <p class="shrink-0 font-mono text-[11px] text-muted">
+                {{
+                  new Date(message.created_at).toLocaleDateString(undefined, {
+                    day: "numeric",
+                    month: "short",
+                  })
+                }}
               </p>
             </div>
 
-            <div class="flex flex-col gap-2 shrink-0">
+            <p class="mt-2 pl-[1.125rem] text-sm leading-relaxed text-muted">
+              {{ message.body }}
+            </p>
+
+            <div class="mt-3 flex items-center gap-5 pl-[1.125rem]">
               <button
                 v-if="!message.is_read"
+                type="button"
                 @click="markAsRead(message.id)"
-                class="w-10 h-10 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-100 transition-colors"
-                title="Mark as Read"
+                class="inline-flex min-h-11 items-center font-mono text-[11px] text-chapel transition-colors hover:text-chapel-strong"
+                :aria-label="`Mark message from ${message.sender_name || 'sender'} as read`"
               >
-                <Icon name="material-symbols:check" class="text-lg" />
+                mark as read
               </button>
+
               <button
+                type="button"
                 @click="deleteMessage(message.id)"
-                class="w-10 h-10 bg-red-50 text-red-600 rounded-xl flex items-center justify-center hover:bg-red-100 transition-colors"
-                title="Delete Message"
+                class="inline-flex min-h-11 items-center font-mono text-[11px] text-muted transition-colors hover:text-status-error"
+                :aria-label="`Delete message from ${message.sender_name || 'sender'}`"
               >
-                <Icon name="material-symbols:delete-outline" class="text-lg" />
+                delete
               </button>
+
+              <span class="ml-auto font-mono text-[11px] text-muted">
+                {{
+                  new Date(message.created_at).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                }}
+              </span>
             </div>
-          </div>
+          </article>
+
+          <button
+            v-if="inboxPagination.hasMore"
+            type="button"
+            @click="loadMoreInbox"
+            class="flex min-h-11 w-full items-center justify-center border-b border-rule font-mono text-[11px] text-muted transition-colors hover:bg-inset hover:text-ink"
+          >
+            load older messages
+          </button>
         </div>
       </div>
     </main>
@@ -116,7 +110,14 @@ import { useMessages } from "~/composables/useMessages";
 import { useAuth } from "~/composables/useAuth";
 import { useRouter } from "vue-router";
 
-const { inbox, loadInbox, markAsRead, deleteMessage } = useMessages();
+const {
+  inbox,
+  inboxPagination,
+  loadInbox,
+  loadMoreInbox,
+  markAsRead,
+  deleteMessage,
+} = useMessages();
 const { token } = useAuth();
 const router = useRouter();
 

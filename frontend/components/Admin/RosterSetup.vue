@@ -1,65 +1,66 @@
 <template>
   <div
-    class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden mt-8"
+    class="bg-white rounded-none border border-rule overflow-hidden"
     v-if="eventId"
   >
-    <div
-      class="p-6 sm:p-8 border-b border-gray-100 bg-black text-white flex justify-between items-center"
+    <!-- <div
+      class="p-6 sm:p-8 border-b border-rule bg-ink text-white flex justify-between items-center"
     >
       <div>
         <h2
-          class="text-lg font-black font-poppins flex items-center gap-2 tracking-wide"
+          class="text-lg font-bold font-sans flex items-center gap-2"
         >
           <Icon name="material-symbols:engineering" class="text-xl" />
-          Roster Generation Engine
+          Roster generation
         </h2>
-        <p class="text-xs text-gray-400 font-medium mt-1">
+        <p class="text-xs text-gray-300 font-medium mt-1">
           Configure parameters before assigning personnel.
         </p>
       </div>
-    </div>
+    </div> -->
 
     <div v-if="isLoading" class="p-12 flex justify-center items-center">
       <Icon
         name="material-symbols:sync"
-        class="animate-spin text-3xl text-gray-300"
+        class="animate-spin text-3xl text-muted"
       />
     </div>
 
     <div
       v-else
-      class="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-gray-100"
+      class="grid grid-cols-1 lg:grid-cols-2 divide-y lg:divide-y-0 lg:divide-x divide-rule"
     >
       <div class="p-6 sm:p-8">
-        <div class="flex justify-between items-end mb-6">
+        <div class="flex-col mb-8">
           <div>
-            <h3
-              class="text-sm font-black uppercase tracking-widest font-montserrat text-black"
-            >
-              Team Availability
+            <h3 class="text-xs md:text-sm font-semibold font-sans text-ink">
+              Team availability
             </h3>
-            <p class="text-xs text-gray-500 mt-1 font-poppins">
+            <p class="text-[11px] text-xs text-muted mt-1 font-sans">
               Uncheck personnel who are absent today.
             </p>
           </div>
           <span
-            class="text-xs font-bold text-gray-400 bg-gray-100 px-3 py-1 rounded-lg text-center"
+            class="text-[11px] md:text-xs font-medium text-muted py-1 rounded-md text-center"
           >
-            {{ availableUsers.length }} / {{ allUsers.length }} Available
+            <span class="font-mono">{{ availableUsers.length }}</span> /
+            <span class="font-mono">{{ allUsers.length }}</span> available
           </span>
         </div>
 
         <div
-          class="border border-gray-200 rounded-xl max-h-[400px] overflow-y-auto bg-gray-50/50"
+          class="border border-rule rounded-none max-h-[400px] overflow-y-auto bg-inset/50"
         >
           <div
             v-for="user in allUsers"
             :key="user.id"
-            class="flex items-center justify-between p-3 border-b border-gray-100 last:border-0 hover:bg-white transition-colors"
+            class="flex items-center justify-between p-3 border-b border-rule last:border-0 hover:bg-white transition-colors"
           >
             <div class="flex items-center gap-3">
-              <div
-                class="w-8 h-8 rounded-full border border-gray-200 bg-gray-100 flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:ring-2 hover:ring-gray-300 transition-all"
+              <button
+                type="button"
+                class="w-8 h-8 rounded-[2px] border border-rule bg-inset flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:ring-2 hover:ring-gray-300 transition-colors"
+                :aria-label="`View ${user.username}'s profile picture`"
                 @click.stop.prevent="openAvatarViewer(user)"
               >
                 <img
@@ -69,19 +70,21 @@
                   alt="Avatar"
                   class="w-full h-full object-cover"
                 />
-                <span v-else class="text-xs font-bold text-gray-400 uppercase">
+                <span v-else class="text-xs font-semibold text-muted">
                   {{ user.first_name?.charAt(0) || user.username?.charAt(0) }}
                 </span>
-              </div>
+              </button>
 
               <div>
-                <span class="font-bold text-sm font-poppins text-black block">
+                <span
+                  class="font-semibold text-xs md:text-sm font-sans text-ink block"
+                >
                   {{ user.username }}
                 </span>
                 <span
-                  class="text-[10px] font-bold text-gray-500 uppercase tracking-widest"
+                  class="text-[11px] md:text-xs font-medium text-muted capitalize"
                 >
-                  {{ user.unit }}
+                  {{ (user.unit || "").replace(/_/g, " ").toLowerCase() }}
                 </span>
               </div>
             </div>
@@ -94,7 +97,7 @@
                 class="sr-only peer"
               />
               <div
-                class="w-11 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-black"
+                class="w-11 h-6 bg-gray-300 rounded-full peer-focus-visible:ring-2 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-black peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-rule-strong after:border after:rounded-full after:h-5 after:w-5 after:transition-transform peer-checked:bg-ink"
               ></div>
             </label>
           </div>
@@ -104,26 +107,26 @@
       <div class="p-6 sm:p-8">
         <div class="flex justify-between items-end mb-6">
           <div>
-            <h3
-              class="text-sm font-black uppercase tracking-widest font-montserrat text-black"
-            >
-              Chapel Layout
+            <h3 class="text-xs md:text-sm font-semibold font-sans text-ink">
+              Chapel layout
             </h3>
-            <p class="text-xs text-gray-500 mt-1 font-poppins">
+            <p class="text-[11px] md:text-xs text-muted mt-1 font-sans">
               Select active zones. Mark late alphabet columns as Low Traffic.
             </p>
           </div>
         </div>
 
         <div
-          class="flex justify-between items-center bg-blue-50/50 p-4 rounded-xl border border-blue-100 mb-6"
+          class="flex justify-between items-center bg p-4 rounded-none border border-chapel-soft mb-6"
         >
           <div>
-            <h4 class="text-sm font-bold text-blue-900 font-montserrat">
-              Scanning Only Mode
+            <h4
+              class="text-xs md:text-sm font-semibold text-status-live font-sans"
+            >
+              Scanning only mode
             </h4>
-            <p class="text-[10px] sm:text-xs text-blue-700 mt-0.5 font-poppins">
-              Bypass arranging duties and deploy all personnel as scanners.
+            <p class="text-[11px] md:text-xs text-status-live mt-0.5 font-sans">
+              Roster everyone to scan.
             </p>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
@@ -133,7 +136,7 @@
               class="sr-only peer"
             />
             <div
-              class="w-11 h-6 bg-blue-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"
+              class="w-11 h-6 bg-chapel-soft rounded-full peer-focus-visible:ring-2 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-black peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-rule-strong after:border after:rounded-full after:h-5 after:w-5 after:transition-transform peer-checked:bg-chapel"
             ></div>
           </label>
         </div>
@@ -145,16 +148,16 @@
             class="space-y-3"
           >
             <div class="flex justify-between items-center border-b pb-1">
-              <h4
-                class="text-xs font-bold text-gray-400 uppercase tracking-widest"
-              >
+              <h4 class="text-xs font-semibold text-muted">
                 Prefix {{ prefix }}
               </h4>
               <div class="flex items-center gap-2">
                 <button
+                  type="button"
                   @click="togglePrefixActive(zones)"
-                  class="p-1 rounded text-gray-400 hover:text-black hover:bg-gray-100 transition-colors flex items-center justify-center"
+                  class="p-1 rounded-md text-muted hover:text-ink hover:bg-inset transition-colors flex items-center justify-center"
                   title="Toggle All Active/Deactivated"
+                  aria-label="Toggle all zones in this prefix"
                 >
                   <Icon
                     name="material-symbols:power-settings-new"
@@ -162,9 +165,11 @@
                   />
                 </button>
                 <button
+                  type="button"
                   @click="togglePrefixLowTraffic(zones)"
-                  class="p-1 rounded text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors flex items-center justify-center"
+                  class="p-1 rounded-md text-muted hover:text-ink hover:bg-inset transition-colors flex items-center justify-center"
                   title="Toggle All Low Traffic"
+                  aria-label="Toggle low traffic for all zones in this prefix"
                 >
                   <Icon name="material-symbols:speed" class="text-sm" />
                 </button>
@@ -175,45 +180,57 @@
               <div
                 v-for="zone in zones"
                 :key="zone.id"
-                class="border rounded-xl p-3 flex flex-col gap-2 transition-all cursor-pointer"
+                class="border rounded-none p-3 flex flex-col gap-2 transition-colors"
                 :class="
                   activeZones.includes(zone.id)
-                    ? 'border-black bg-black text-white shadow-md'
-                    : 'border-gray-200 bg-gray-500 hover:border-gray-300'
+                    ? 'border-ink bg-ink text-white'
+                    : 'border-rule bg-inset hover:border-rule-strong'
                 "
-                @click="toggleZone(zone.id)"
               >
-                <span
-                  class="font-black font-montserrat text-center block"
+                <button
+                  type="button"
+                  @click="toggleZone(zone.id)"
+                  :aria-pressed="activeZones.includes(zone.id)"
+                  :aria-label="`${zone.name} ${
+                    activeZones.includes(zone.id) ? 'active' : 'inactive'
+                  }. Click to toggle.`"
+                  class="font-semibold font-mono text-center block w-full text-xs tracking-wide"
                   :class="
-                    activeZones.includes(zone.id) ? 'text-white' : 'text-black'
+                    activeZones.includes(zone.id) ? 'text-white' : 'text-ink'
                   "
                 >
                   {{ zone.name }}
-                </span>
+                </button>
 
                 <button
                   v-if="activeZones.includes(zone.id)"
-                  @click.stop="toggleLowTraffic(zone.id)"
-                  class="text-[9px] font-bold uppercase tracking-widest py-1 px-2 rounded w-full transition-colors"
+                  type="button"
+                  @click="toggleLowTraffic(zone.id)"
+                  :aria-pressed="lowTrafficZones.includes(zone.id)"
+                  :aria-label="`${zone.name} traffic: ${
+                    lowTrafficZones.includes(zone.id)
+                      ? 'low traffic'
+                      : 'high traffic'
+                  }. Click to toggle.`"
+                  class="text-[11px] md:text-xs font-semibold py-0.5 px-2 rounded-md w-full transition-colors"
                   :class="
                     lowTrafficZones.includes(zone.id)
-                      ? 'bg-orange-500 text-white'
-                      : 'bg-white text-black hover:bg-gray-700'
+                      ? 'bg-ink text-white'
+                      : 'bg-white text-ink hover:bg-inset'
                   "
                 >
                   {{
                     lowTrafficZones.includes(zone.id)
-                      ? "Low Traffic"
-                      : "High Traffic"
+                      ? "Low traffic"
+                      : "High traffic"
                   }}
                 </button>
-                <button
+                <span
                   v-else
-                  class="text-[9px] font-bold uppercase tracking-widest py-1 px-2 rounded w-full transition-colors bg-gray-300"
+                  class="text-xs font-semibold py-1 px-2 rounded-[2px] w-full text-center bg-gray-200 text-muted"
                 >
                   Deactivated
-                </button>
+                </span>
               </div>
             </div>
           </div>
@@ -221,19 +238,13 @@
       </div>
     </div>
 
-    <div class="p-6 border-t border-gray-100 bg-gray-50 flex justify-end">
+    <div class="p-6 border-t border-rule bg-inset flex justify-end">
       <button
         @click="runAlgorithm"
         :disabled="isGenerating"
-        class="bg-black text-white px-8 py-3 rounded-xl font-bold font-poppins uppercase tracking-widest text-xs hover:bg-gray-800 transition-colors flex items-center gap-2 disabled:opacity-50"
+        class="bg-chapel text-white px-6 py-3 font-semibold font-sans text-sm hover:bg-chapel-strong transition-colors flex items-center gap-2 disabled:opacity-50"
       >
-        <Icon
-          v-if="isGenerating"
-          name="material-symbols:sync"
-          class="text-lg animate-spin"
-        />
-        <Icon v-else name="material-symbols:memory" class="text-lg" />
-        {{ isGenerating ? "Calculating..." : "Run Algorithm" }}
+        {{ isGenerating ? "Generating…" : "Generate roster" }}
       </button>
     </div>
 
@@ -247,13 +258,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from "vue"; // Ensure path matches your structure
+import { ref, onMounted, computed } from "vue";
+import { useAppToast } from "~/composables/useAppToast";
 
 const props = defineProps({
   eventId: String,
 });
 
 const emit = defineEmits(["rosterGenerated"]);
+const toast = useAppToast();
 const isGenerating = ref(false);
 const isLoading = ref(true);
 
@@ -277,15 +290,55 @@ const openAvatarViewer = (user) => {
   isViewerOpen.value = true;
 };
 
+// The API caps a page at 100 rows, so asking for limit=1000 silently returns
+// 100. Walk every page and merge the results so the algorithm always sees the
+// complete team. Pages after the first are fetched in parallel.
+const USERS_PAGE_SIZE = 100;
+
+const fetchAllUsers = async () => {
+  const firstPage = await useApiFetch(
+    `/users?limit=${USERS_PAGE_SIZE}&page=1&sort=asc`,
+  );
+
+  const users = Array.isArray(firstPage?.users) ? [...firstPage.users] : [];
+  const totalPages = Math.max(
+    1,
+    Number(firstPage?.pagination?.totalPages) || 1,
+  );
+
+  if (totalPages > 1) {
+    const remainingPages = await Promise.all(
+      Array.from({ length: totalPages - 1 }, (_, index) =>
+        useApiFetch(
+          `/users?limit=${USERS_PAGE_SIZE}&page=${index + 2}&sort=asc`,
+        ),
+      ),
+    );
+
+    for (const page of remainingPages) {
+      if (Array.isArray(page?.users)) users.push(...page.users);
+    }
+  }
+
+  // A user created or removed between page requests can shift a row across a
+  // boundary; de-duplicating by id keeps the availability list clean.
+  const byId = new Map();
+  for (const user of users) {
+    if (user?.id) byId.set(user.id, user);
+  }
+
+  return [...byId.values()];
+};
+
 const fetchData = async () => {
   isLoading.value = true;
   try {
-    const [usersData, zonesData] = await Promise.all([
-      useApiFetch(`/users?limit=1000&sort=asc`),
+    const [users, zonesData] = await Promise.all([
+      fetchAllUsers(),
       useApiFetch(`/zones`),
     ]);
 
-    allUsers.value = usersData.users.filter((u) => u.role !== "SUPER_ADMIN");
+    allUsers.value = users.filter((u) => u.role !== "SUPER_ADMIN");
     availableUsers.value = [...allUsers.value];
 
     allZones.value = zonesData;
@@ -361,12 +414,16 @@ const togglePrefixLowTraffic = (zones) => {
 
 const runAlgorithm = async () => {
   if (activeZones.value.length === 0) {
-    alert("You must have at least one active zone selected.");
+    toast.warning(
+      "Select at least one active zone before generating a roster.",
+    );
     return;
   }
 
   if (availableUsers.value.length === 0) {
-    alert("You must have at least one available team member.");
+    toast.warning(
+      "Add at least one available team member before generating a roster.",
+    );
     return;
   }
 
@@ -388,7 +445,7 @@ const runAlgorithm = async () => {
     emit("rosterGenerated", data);
   } catch (error) {
     console.error("Algorithm failed:", error);
-    alert("Failed to run the algorithm. Please try again.");
+    toast.error("Couldn't generate the roster. Please try again.");
   } finally {
     isGenerating.value = false;
   }

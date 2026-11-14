@@ -1,5 +1,5 @@
 // frontend/composables/useScanner.js
-import { ref, onMounted, onBeforeUnmount, watch } from "vue";
+import { ref, shallowRef, watch, onMounted, onBeforeUnmount } from "vue";
 import { db } from "~/utils/db";
 import { useAuth } from "~/composables/useAuth";
 import { useAppToast } from "~/composables/useAppToast";
@@ -16,23 +16,41 @@ const syncSuccessAudioUrl = new URL(
 const errorAudioUrl = new URL("../assets/audio/error.mp3", import.meta.url)
   .href;
 
+const SYNC_BATCH_SIZE = 100;
+const SYNC_REQUEST_RETRIES = 2;
+const REJECTED_SYNC_STATUS = "rejected";
+const ERROR_TOAST_THROTTLE_MS = 15_000;
+
+const newestFirst = (a, b) =>
+  new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+
+const oldestFirst = (a, b) =>
+  new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+
 export const useScanner = (selectedEventId, eventStatus) => {
-  const { user, token } = useAuth();
+  const { user } = useAuth();
   const toast = useAppToast();
   const confirmDialog = useConfirm();
 
   const isOnline = ref(true);
   const isSyncing = ref(false);
-  const unsyncedQueue = ref([]);
-  const syncErrors = ref([]);
+  const pendingCount = ref(0);
+  const unsyncedQueue = shallowRef([]);
+  const syncErrors = shallowRef([]);
 
   const scannedMatric = ref(null);
   const scanWarning = ref(null);
+
   let logTimeout = null;
   let scanSuccessAudio = null;
   let syncSuccessAudio = null;
   let errorAudio = null;
   let heartbeatInterval = null;
+  let heartbeatInFlight = false;
+  let syncController = null;
+  let syncQueued = false;
+  let pendingCountRequestId = 0;
+  const lastErrorToastAtByKey = new Map();
 
   const playSound = (audio) => {
     if (!audio) return;
@@ -57,69 +75,219 @@ export const useScanner = (selectedEventId, eventStatus) => {
     }, 4000);
   };
 
+  const notifyErrorThrottled = (key, message, title = "Error") => {
+    const now = Date.now();
+    const lastAt = lastErrorToastAtByKey.get(key) ?? 0;
+
+    if (now - lastAt < ERROR_TOAST_THROTTLE_MS) return;
+
+    lastErrorToastAtByKey.set(key, now);
+    toast.error(message, title);
+  };
+
+  // The badge is sourced from IndexedDB, not from the loaded UI array, so it
+  // stays correct even when only the latest 50 rows are rendered.
+  const refreshPendingCount = async () => {
+    const requestId = ++pendingCountRequestId;
+
+    try {
+      const [total, rejected] = await Promise.all([
+        db.unsynced_scans.count(),
+        db.unsynced_scans
+          .filter((record) => record.sync_status === REJECTED_SYNC_STATUS)
+          .count(),
+      ]);
+
+      // Ignore an older count that resolved after a newer refresh.
+      if (requestId !== pendingCountRequestId) return;
+
+      pendingCount.value = Math.max(0, total - rejected);
+    } catch (_) {
+      if (requestId !== pendingCountRequestId) return;
+
+      // Leave the last IndexedDB-derived value in place. Never fall back to
+      // the truncated UI array, which may not represent the full queue.
+    }
+  };
+
   const loadQueue = async () => {
     const records = await db.unsynced_scans.toArray();
-    unsyncedQueue.value = records.reverse();
+    const pending = [];
+    const rejected = [];
+
+    for (const record of records) {
+      if (record.sync_status === REJECTED_SYNC_STATUS) {
+        rejected.push(record);
+      } else {
+        pending.push(record);
+      }
+    }
+
+    // Newest-first is only for the UI. syncRecords() sorts oldest-first.
+    unsyncedQueue.value = pending.sort(newestFirst);
+    syncErrors.value = rejected.sort(newestFirst);
+    await refreshPendingCount();
   };
 
   // The Sync Engine
   const syncRecords = async () => {
-    if (
-      isSyncing.value ||
-      unsyncedQueue.value.length === 0 ||
-      !isOnline.value
-      // REMOVED: !selectedEventId.value
-      // We don't need an active event selected on the UI to sync past records!
-    )
+    if (!isOnline.value) return;
+
+    if (isSyncing.value) {
+      // A scan may have arrived while a sync was in flight. Re-run after the
+      // active pass so the queue is drained completely.
+      syncQueued = true;
       return;
+    }
+
+    const hasPendingRecords = unsyncedQueue.value.some(
+      (record) => record.sync_status !== REJECTED_SYNC_STATUS,
+    );
+    if (!hasPendingRecords) {
+      await refreshPendingCount();
+      return;
+    }
 
     isSyncing.value = true;
-    const recordsToProcess = [...unsyncedQueue.value];
+    const controller = new AbortController();
+    syncController = controller;
     let successfulSyncCount = 0;
     let syncAborted = false;
 
-    for (const record of recordsToProcess) {
-      try {
-        await useApiFetch("/attendance/scan", {
-          method: "POST",
-          body: {
-            event_id: record.eventId, // FIXED: Use the saved eventId, not the UI state
-            usher_id: user.value.id,
-            matric_number: record.matric_number,
-            scan_type: record.scan_type,
-            scanned_at: record.timestamp,
-          },
-        });
+    try {
+      while (isOnline.value && !syncAborted && !controller.signal.aborted) {
+        // The API accepts at most 100 scans per request. Oldest-first ordering
+        // ensures sign-ins are sent before their matching sign-outs.
+        const batch = unsyncedQueue.value
+          .filter((record) => record.sync_status !== REJECTED_SYNC_STATUS)
+          .sort(oldestFirst)
+          .slice(0, SYNC_BATCH_SIZE);
 
-        await db.unsynced_scans.delete(record.id);
-        successfulSyncCount += 1;
-      } catch (error) {
-        const status = error.statusCode || error.response?.status;
-        if (status === 409 || status === 403) {
-          const errorData = error.data || {};
-          syncErrors.value.unshift({
-            id: Date.now() + Math.random(),
-            matric: record.matric_number,
-            message:
-              errorData.message || errorData.error || "Rejected by server.",
+        if (batch.length === 0) break;
+
+        try {
+          const results = await useApiFetch("/attendance/sync", {
+            method: "POST",
+            body: batch.map((record) => ({
+              id: String(record.id),
+              event_id: record.eventId,
+              usher_id: record.usher_id,
+              matric_number: record.matric_number,
+              scan_type: record.scan_type,
+              scanned_at: record.timestamp,
+            })),
+            // Sync is explicitly retryable because every item carries a
+            // client-generated id and the batch is safe to re-submit.
+            retry: { retries: SYNC_REQUEST_RETRIES },
+            signal: controller.signal,
           });
 
-          playSound(errorAudio);
-          if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
-          await db.unsynced_scans.delete(record.id);
-        } else {
-          toast.error("Network died during sync loop:", "Network Error");
+          if (!Array.isArray(results)) {
+            throw new Error("Unexpected attendance sync response.");
+          }
+
+          const recordsById = new Map(
+            batch.map((record) => [String(record.id), record]),
+          );
+          const acceptedIds = [];
+          const rejectedRecords = [];
+
+          for (const result of results) {
+            const record = recordsById.get(String(result?.id));
+            if (!record) continue;
+
+            if (result.status === "accepted") {
+              acceptedIds.push(record.id);
+            } else if (result.status === REJECTED_SYNC_STATUS) {
+              rejectedRecords.push({
+                ...record,
+                sync_status: REJECTED_SYNC_STATUS,
+                sync_error:
+                  result.reason || "Rejected by the server.",
+                rejected_at: new Date().toISOString(),
+              });
+            }
+          }
+
+          if (acceptedIds.length > 0 || rejectedRecords.length > 0) {
+            await db.transaction("rw", db.unsynced_scans, async () => {
+              if (acceptedIds.length > 0) {
+                await db.unsynced_scans.bulkDelete(acceptedIds);
+              }
+
+              if (rejectedRecords.length > 0) {
+                await db.unsynced_scans.bulkUpdate(
+                  rejectedRecords.map((record) => ({
+                    key: record.id,
+                    changes: {
+                      sync_status: record.sync_status,
+                      sync_error: record.sync_error,
+                      rejected_at: record.rejected_at,
+                    },
+                  })),
+                );
+              }
+            });
+          }
+
+          const acceptedIdSet = new Set(acceptedIds.map(String));
+          const rejectedIdSet = new Set(
+            rejectedRecords.map((record) => String(record.id)),
+          );
+
+          // Remove resolved records from the in-memory pending list. Anything
+          // without a server result stays queued and will be retried.
+          unsyncedQueue.value = unsyncedQueue.value.filter(
+            (record) =>
+              !acceptedIdSet.has(String(record.id)) &&
+              !rejectedIdSet.has(String(record.id)),
+          );
+
+          if (rejectedRecords.length > 0) {
+            syncErrors.value = [...rejectedRecords, ...syncErrors.value].sort(
+              newestFirst,
+            );
+            playSound(errorAudio);
+            if (navigator.vibrate) {
+              navigator.vibrate([200, 100, 200, 100, 200]);
+            }
+          }
+
+          successfulSyncCount += acceptedIds.length;
+          await refreshPendingCount();
+
+          // Defensive: avoid spinning forever if a response resolves nothing.
+          if (acceptedIds.length === 0 && rejectedRecords.length === 0) break;
+        } catch (error) {
+          if (!controller.signal.aborted && error?.name !== "AbortError") {
+            notifyErrorThrottled(
+              "sync",
+              "Couldn't sync. Your scans are still saved on this device.",
+              "Sync Error",
+            );
+          }
           syncAborted = true;
-          break;
         }
+      }
+    } finally {
+      // Always release the lock, even after a timeout, abort, or DB failure.
+      isSyncing.value = false;
+      syncController = null;
+      await refreshPendingCount();
+
+      if (syncQueued) {
+        syncQueued = false;
+        if (isOnline.value) setTimeout(() => syncRecords(), 0);
       }
     }
 
-    await loadQueue();
-    if (successfulSyncCount > 0 && !syncAborted) {
+    if (
+      successfulSyncCount > 0 &&
+      !syncAborted &&
+      unsyncedQueue.value.length === 0
+    ) {
       playSound(syncSuccessAudio);
     }
-    isSyncing.value = false;
   };
 
   // Process a new scan
@@ -140,6 +308,7 @@ export const useScanner = (selectedEventId, eventStatus) => {
           scan_type: currentScanType,
           eventId: selectedEventId.value,
         })
+        .filter((record) => record.sync_status !== REJECTED_SYNC_STATUS)
         .first();
 
       if (existingRecord) {
@@ -150,22 +319,33 @@ export const useScanner = (selectedEventId, eventStatus) => {
         return;
       }
 
-      await db.unsynced_scans.add({
+      const newRecord = {
         id: crypto.randomUUID(),
+        usher_id: user.value?.id ?? null,
         matric_number: cleanText,
         scan_type: currentScanType,
         timestamp: new Date().toISOString(),
         eventId: selectedEventId.value, // Properly tagged!
-      });
+        sync_status: "pending",
+      };
+
+      await db.unsynced_scans.add(newRecord);
 
       playSound(scanSuccessAudio);
       scannedMatric.value = cleanText;
-      await loadQueue();
+      // Update the UI queue locally; no full IndexedDB read is needed.
+      unsyncedQueue.value = [newRecord, ...unsyncedQueue.value];
+      await refreshPendingCount();
       if (navigator.vibrate) navigator.vibrate(200);
       if (isOnline.value) syncRecords();
       clearLogAfterDelay();
     } catch (error) {
-      toast.error("Local DB Error:", error);
+      console.error("Failed to save scan locally", error);
+      notifyErrorThrottled(
+        "local-db",
+        "Failed to save this scan locally. Please retry.",
+        "Local DB Error",
+      );
     }
   };
 
@@ -173,10 +353,17 @@ export const useScanner = (selectedEventId, eventStatus) => {
   const startHeartbeat = () => {
     if (heartbeatInterval) return;
 
-    const ping = () => {
-      // Silently ping the backend to update the last_active timestamp
-      if (isOnline.value) {
-        useApiFetch("/users/heartbeat", { method: "PATCH" }).catch(() => {});
+    const ping = async () => {
+      if (!isOnline.value || heartbeatInFlight) return;
+
+      heartbeatInFlight = true;
+      try {
+        // Silently ping the backend to update the last_active timestamp.
+        await useApiFetch("/users/heartbeat", { method: "PATCH" });
+      } catch (_) {
+        // Heartbeats are best-effort.
+      } finally {
+        heartbeatInFlight = false;
       }
     };
 
@@ -185,8 +372,17 @@ export const useScanner = (selectedEventId, eventStatus) => {
   };
 
   // Setup Online/Offline listeners
-  const setOnline = () => (isOnline.value = true);
-  const setOffline = () => (isOnline.value = false);
+  const setOnline = () => {
+    isOnline.value = true;
+    syncRecords();
+  };
+
+  const setOffline = () => {
+    isOnline.value = false;
+    // Abort an in-flight request immediately so isSyncing cannot stay stuck
+    // until the network timeout elapses.
+    syncController?.abort();
+  };
 
   onMounted(() => {
     scanSuccessAudio = new Audio(scanSuccessAudioUrl);
@@ -200,9 +396,18 @@ export const useScanner = (selectedEventId, eventStatus) => {
     isOnline.value = navigator.onLine;
     window.addEventListener("online", setOnline);
     window.addEventListener("offline", setOffline);
-    loadQueue().then(() => {
-      if (isOnline.value) syncRecords();
-    });
+    loadQueue()
+      .then(() => {
+        if (isOnline.value) syncRecords();
+      })
+      .catch((error) => {
+        console.error("Failed to load local queue", error);
+        notifyErrorThrottled(
+          "load-queue",
+          "Failed to load locally saved scans.",
+          "Local DB Error",
+        );
+      });
 
     startHeartbeat();
   });
@@ -210,6 +415,7 @@ export const useScanner = (selectedEventId, eventStatus) => {
   onBeforeUnmount(() => {
     if (logTimeout) clearTimeout(logTimeout);
     if (heartbeatInterval) clearInterval(heartbeatInterval);
+    syncController?.abort();
 
     if (scanSuccessAudio) {
       scanSuccessAudio.pause();
@@ -230,10 +436,6 @@ export const useScanner = (selectedEventId, eventStatus) => {
     window.removeEventListener("offline", setOffline);
   });
 
-  watch(isOnline, (newStatus) => {
-    if (newStatus === true) syncRecords();
-  });
-
   const clearQueue = async () => {
     const isConfirmed = await confirmDialog.ask({
       title: "Clear Queue?",
@@ -248,15 +450,22 @@ export const useScanner = (selectedEventId, eventStatus) => {
 
     try {
       await db.unsynced_scans.clear();
-      await loadQueue();
+      unsyncedQueue.value = [];
+      syncErrors.value = [];
+      await refreshPendingCount();
     } catch (error) {
-      toast.error("Failed to clear queue. Please refresh the page.");
+      notifyErrorThrottled(
+        "clear-queue",
+        "Failed to clear queue. Please refresh the page.",
+        "Local DB Error",
+      );
     }
   };
 
   return {
     isOnline,
     isSyncing,
+    pendingCount,
     unsyncedQueue,
     syncErrors,
     scannedMatric,

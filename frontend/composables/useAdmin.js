@@ -17,7 +17,9 @@ export const useAdmin = () => {
     try {
       allEvents.value = await useApiFetch("/events");
     } catch (error) {
-      toast.error("Failed to fetch events");
+      toast.error(
+        "Couldn't load events. Check your connection and try again.",
+      );
     } finally {
       isLoadingEvents.value = false;
     }
@@ -47,10 +49,10 @@ export const useAdmin = () => {
         method: "POST",
         body: userData,
       });
-      toast.success("User registered successfully!");
+      toast.success("User added successfully.");
       return true;
     } catch (error) {
-      toast.error(`Failed: ${error.data?.message || "Could not create user"}`);
+      toast.error(`Couldn't add user: ${error.data?.message || "Please try again."}`);
       return false;
     }
   };

@@ -16,11 +16,11 @@
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
         <div
-          class="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 shadow-sm hover:border-black transition-all duration-200 group flex flex-col"
+          class="bg-white rounded-2xl border border-gray-200 p-6 sm:p-8 shadow-sm hover:border-black transition-colors duration-200 group flex flex-col"
         >
           <div class="flex items-center gap-4 mb-4">
             <div
-              class="bg-green-50 text-green-600 p-3 rounded-xl group-hover:bg-green-600 group-hover:text-white transition-colors duration-200 flex items-center justify-center"
+              class="bg-green-50 text-green-600 p-3 rounded-lg group-hover:bg-green-600 group-hover:text-white transition-colors duration-200 flex items-center justify-center"
             >
               <Icon name="material-symbols:qr-code-scanner" class="text-2xl" />
             </div>
@@ -35,7 +35,7 @@
           <div class="flex flex-col sm:flex-row gap-3 mt-auto">
             <NuxtLink
               to="/scanner"
-              class="w-full bg-black text-white text-center py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-gray-900 transition-colors shadow-sm flex items-center justify-center gap-2"
+              class="w-full bg-black text-white text-center py-3 px-4 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-gray-900 transition-colors shadow-sm flex items-center justify-center gap-2"
             >
               <Icon name="material-symbols:play-arrow" class="text-lg" />
               Launch Scanner

@@ -3,7 +3,26 @@ export default defineNuxtConfig({
   compatibilityDate: "2024-11-01",
   devtools: { enabled: true },
 
-  modules: ["@nuxt/ui", "@pinia/nuxt", "@nuxt/icon", "@vite-pwa/nuxt"],
+  modules: ["@nuxt/ui", "@nuxt/icon", "@vite-pwa/nuxt"],
+
+  // Fonts are self-hosted in assets/css/main.css. Disable @nuxt/fonts so it
+  // cannot auto-download a second copy of the same families.
+  ui: {
+    fonts: false,
+  },
+
+  app: {
+    head: {
+      title: "COPAMS",
+      meta: [
+        {
+          name: "description",
+          content: "Offline-first attendance management system.",
+        },
+        { name: "theme-color", content: "#F4F5F1" },
+      ],
+    },
+  },
 
   routeRules: {
     "/": { redirect: "/scanner" },
@@ -18,13 +37,13 @@ export default defineNuxtConfig({
   ssr: false,
 
   pwa: {
-    registerType: "prompt", // We use prompt so we can show an "Update" button when you push new code
+    registerType: "autoUpdate", // Install updates automatically; the new service worker activates and reloads once in the background
     manifest: {
-      name: "Chapel of Praise Scanner",
-      short_name: "COP Scanner",
-      description: "Offline-first attendance scanner and admin dashboard.",
-      theme_color: "#000000",
-      background_color: "#ffffff",
+      name: "COPAMS",
+      short_name: "COPAMS",
+      description: "Offline-first attendance management system.",
+      theme_color: "#F4F5F1",
+      background_color: "#F4F5F1",
       display: "standalone", // This hides the browser URL bar to make it look like a native app
       orientation: "portrait",
       icons: [
@@ -47,13 +66,74 @@ export default defineNuxtConfig({
       ],
     },
     workbox: {
-      // This tells the service worker to cache ALL your JS, CSS, and HTML for offline use
-      globPatterns: ["**/*.{js,css,html,png,svg,ico}"],
+      // "autoUpdate" swaps in a new service worker as soon as it is installed.
+      // These two flags make that swap immediate rather than waiting for every
+      // old tab to close: the new worker claims open clients and activates.
+      // Old JWTs keep working because the token lives in a cookie, not in the
+      // precached bundle, and export/API routes are unchanged by a rebuild.
+      skipWaiting: true,
+      clientsClaim: true,
+
+      // Precache the app shell as well as the scanner sounds and locally bundled fonts.
+      globPatterns: [
+        "**/*.{js,css,html,png,svg,ico,mp3,woff2,woff,webmanifest}",
+      ],
       // Increase the file size limit to 3MB just in case your bundled assets get large
       maximumFileSizeToCacheInBytes: 3000000,
+      // Remove stale precache entries when a new service worker is installed.
+      cleanupOutdatedCaches: true,
+      // Cache one copy of the SPA shell so the navigation fallback has a real
+      // precached URL to serve. A fresh revision is generated for each build.
+      additionalManifestEntries: [
+        {
+          url: "/scanner",
+          revision: Date.now().toString(),
+        },
+      ],
 
-      // NEW: The magic rule that fixes the "You're offline" screen
-      navigateFallback: "/",
+      // Safe read-only API responses: use the network first, then fall back to
+      // the last good response when offline or after a short timeout.
+      runtimeCaching: [
+        {
+          urlPattern:
+            /^https?:\/\/[^/]+\/(?:.*\/)?api\/events\/active(?:\?.*)?$/,
+          method: "GET",
+          handler: "NetworkFirst",
+          options: {
+            cacheName: "api-events-active",
+            networkTimeoutSeconds: 4,
+            expiration: {
+              maxEntries: 1,
+              maxAgeSeconds: 60 * 60 * 24,
+            },
+            cacheableResponse: {
+              statuses: [0, 200],
+            },
+          },
+        },
+        {
+          // The admin roster is mutated by generate/publish and must never be
+          // served from a stale offline copy. Ushers only need my-duty offline.
+          urlPattern:
+            /^https?:\/\/[^/]+\/(?:.*\/)?api\/roster\/[^/?]+\/my-duty(?:\?.*)?$/,
+          method: "GET",
+          handler: "NetworkFirst",
+          options: {
+            cacheName: "api-my-duty",
+            networkTimeoutSeconds: 4,
+            expiration: {
+              maxEntries: 20,
+              maxAgeSeconds: 60 * 60 * 12,
+            },
+            cacheableResponse: {
+              statuses: [0, 200],
+            },
+          },
+        },
+      ],
+
+      // Serve the precached SPA shell for navigation requests when offline.
+      navigateFallback: "/scanner",
       // NEW: Ensures query parameters (like ?event=123) don't break the offline cache
       ignoreURLParametersMatching: [/.*/],
     },

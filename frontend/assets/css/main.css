@@ -1,19 +1,376 @@
-@import "@fontsource/poppins";
-@import "@fontsource-variable/roboto";
-@import "@fontsource-variable/montserrat";
-@import "@fontsource/inter";
 @import "tailwindcss";
 @import "@nuxt/ui";
 
-html,
-body {
-  background-color: #f8fafc;
-  font-family: "Poppins", sans-serif, system-ui, sans-serif !important;
+/* Schibsted Grotesk is the single UI typeface. One variable file covers the full
+   400–900 range the interface uses, so a 900 display setting is a real weight and
+   not a clamped 700. Spline Sans Mono is reserved for data: matric numbers,
+   counts, PINs and timestamps. */
+@font-face {
+  font-family: "Schibsted Grotesk";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400 800;
+  src: url("@fontsource-variable/schibsted-grotesk/files/schibsted-grotesk-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+    U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* Latin Extended covers the diacritics Nigerian names use (ẹ, ọ, ṣ, ị, ụ).
+   Without it the browser drops to a system face mid-word. */
+@font-face {
+  font-family: "Schibsted Grotesk";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400 800;
+  src: url("@fontsource-variable/schibsted-grotesk/files/schibsted-grotesk-latin-ext-wght-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+@font-face {
+  font-family: "Spline Sans Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 700;
+  src: url("@fontsource-variable/spline-sans-mono/files/spline-sans-mono-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+    U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Spline Sans Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 700;
+  src: url("@fontsource-variable/spline-sans-mono/files/spline-sans-mono-latin-ext-wght-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
+/* Newsreader carries the display voice: screen titles, section headings and
+   the empty prompts. It is a text serif with an optical-size axis, so large
+   settings keep a sharp, printed-register contrast with the grotesque UI. */
+@font-face {
+  font-family: "Newsreader";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+    U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Newsreader";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 800;
+  src: url("@fontsource-variable/newsreader/files/newsreader-latin-ext-wght-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+    U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
 }
 
 @theme {
-  --font-montserrat: "Montserrat", sans-serif;
-  --font-roboto: "Roboto", sans-serif;
-  --font-poppins: "Poppins", sans-serif;
-  --font-sans: "Inter", sans-serif;
+  --font-sans: "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
+  --font-mono: "Spline Sans Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* COPAMS identity palette — the usher's instrument. */
+  --color-canvas: #f4f5f1;
+  --color-surface: #ffffff;
+  --color-ink: #0e1210;
+  --color-muted: #5b6560;
+  --color-chapel: #1e40af;
+  --color-chapel-strong: #17307f;
+  --color-chapel-soft: #e8edf9;
+
+  /* Ledger surface. Rules replace cards as the structural device; inset is the
+     only fill used to mark a selected row or a quiet block. */
+  --color-rule: #d6d8cf;
+  --color-rule-strong: #858a80;
+  --color-inset: #ecede6;
+
+  /* Strict status semantics. Every status surface, dot and badge uses these. */
+  --color-status-draft: #0e1210;
+  --color-status-live: #1e40af;
+  --color-status-syncing: #b45309;
+  --color-status-locked: #78350f;
+  --color-status-archived: #6b7280;
+  --color-status-success: #15803d;
+  --color-status-error: #b91c1c;
+  /* Info is deliberately a different family from Live so the two badges
+     cannot be mistaken for each other. */
+  --color-status-info: #0f766e;
+
+  /* Strict overlay scale. */
+  --z-index-base: 0;
+  --z-index-nav: 40;
+  --z-index-drawer: 50;
+  --z-index-modal: 50;
+  --z-index-install: 80;
+  --z-index-toast: 99;
+}
+
+html,
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* Status badge primitives. Colours stay in one place so a roster, a scanner
+   and an analytics table can never drift into different meanings. */
+@layer components {
+  .status-draft {
+    border-color: #d1d5db;
+    background-color: #f3f4f6;
+    color: #0e1210;
+  }
+
+  .status-live {
+    border-color: #bfdbfe;
+    background-color: #e8edf9;
+    color: #1e40af;
+  }
+
+  .status-syncing {
+    border-color: #fcd34d;
+    background-color: #fef3c7;
+    color: #b45309;
+  }
+
+  .status-locked {
+    border-color: #f59e0b;
+    background-color: #fef3c7;
+    color: #78350f;
+  }
+
+  .status-archived {
+    border-color: #d1d5db;
+    background-color: #f3f4f6;
+    color: #4b5563;
+  }
+
+  .status-error {
+    border-color: #fca5a5;
+    background-color: #fee2e2;
+    color: #b91c1c;
+  }
+
+  .status-success {
+    border-color: #bbf7d0;
+    background-color: #f0fdf4;
+    color: #15803d;
+  }
+
+  .status-info {
+    border-color: #99f6e4;
+    background-color: #f0fdfa;
+    color: #0f766e;
+  }
+}
+
+/* ---- Ledger primitives -------------------------------------------------
+   Structural rules, a small mono label voice, the display serif, and squared
+   controls. Cards are deliberately absent: surfaces are separated by rules.
+   Only temporary layers (modal, drawer, toast) are allowed to float. */
+@layer components {
+  .led-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    line-height: 1.4;
+    letter-spacing: 0.01em;
+    color: var(--color-muted);
+  }
+
+  .led-display {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-optical-sizing: auto;
+    letter-spacing: -0.015em;
+    line-height: 1.04;
+    color: var(--color-ink);
+    text-wrap: balance;
+  }
+
+  .led-field {
+    width: 100%;
+    height: 3rem;
+    border: 1px solid var(--color-rule-strong);
+    background: var(--color-surface);
+    padding: 0 0.875rem;
+    font-size: 1rem;
+    color: var(--color-ink);
+    transition: border-color 0.15s ease;
+  }
+
+  .led-field::placeholder {
+    color: var(--color-muted);
+  }
+
+  .led-field:focus {
+    border-color: var(--color-chapel);
+  }
+
+  .led-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 2.75rem;
+    padding: 0 1.25rem;
+    border: 1px solid transparent;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      color 0.15s ease;
+  }
+
+  .led-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .led-btn-primary {
+    background: var(--color-chapel);
+    color: #fff;
+  }
+
+  .led-btn-primary:hover:not(:disabled) {
+    background: var(--color-chapel-strong);
+  }
+
+  .led-btn-quiet {
+    background: transparent;
+    color: var(--color-ink);
+    border-color: var(--color-rule-strong);
+  }
+
+  .led-btn-quiet:hover:not(:disabled) {
+    background: var(--color-inset);
+  }
+
+  .led-btn-danger {
+    background: transparent;
+    color: var(--color-status-error);
+    border-color: #e3b6b2;
+  }
+
+  .led-btn-danger:hover:not(:disabled) {
+    background: #fdf0ef;
+    border-color: var(--color-status-error);
+  }
+}
+
+/* One page entrance for the whole product. Route changes fade the page in by
+   a few pixels only — enough to orient, never enough to distract. */
+.page-enter-active {
+  animation: page-enter 180ms ease-out both;
+}
+
+.page-leave-active {
+  animation: none;
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* One shared feedback reveal. Pages previously defined their own
+   .animate-fade-in with different offsets under the same name. */
+.animate-fade-in {
+  animation: fade-in 180ms ease-out both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Defer layout/paint for long tables until they approach the viewport. */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 480px;
+}
+
+/* Accessibility baseline: every interactive element gets a visible keyboard
+   focus ring. Text-entry controls use the Chapel Blue accent so the focused
+   field is unambiguous, while other controls follow the surrounding text
+   colour for contrast on light and dark surfaces. This is intentionally
+   unlayered so legacy outline-none utilities cannot suppress it. */
+:where(a,
+  button,
+  summary,
+  [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+:where(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]),
+  select,
+  textarea):focus-visible {
+  outline: 2px solid var(--color-chapel);
+  outline-offset: 2px;
+}
+
+/* Skip link for keyboard users navigating the authenticated shell. */
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 100;
+  transform: translateY(-200%);
+  border-radius: 0.5rem;
+  background: #000;
+  color: #fff;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: transform 0.15s ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+/* Respect the operating system's motion preference everywhere, including
+   component-scoped keyframes and decorative pulses. */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

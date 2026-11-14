@@ -1,6 +1,6 @@
 <template>
   <header
-    class="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 border-b border-rule pb-5"
+    class="flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-b border-rule pb-5"
   >
     <div class="min-w-0">
       <p v-if="eyebrow" class="led-eyebrow mb-2">{{ eyebrow }}</p>

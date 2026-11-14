@@ -15,8 +15,7 @@
       <div class="min-w-0">
         <h3 class="text-base font-semibold text-ink">Camera paused</h3>
         <p class="mt-1 max-w-sm text-sm leading-relaxed text-muted">
-          Start the scanner when you want to scan. Leaving it paused saves the
-          device's battery.
+          Leaving camera paused when not in use, to save battery.
         </p>
       </div>
     </div>

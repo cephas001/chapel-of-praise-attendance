@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-canvas pb-12 font-sans text-ink">
     <main class="mx-auto max-w-6xl px-5 pt-6 sm:px-8">
-      <LedgerPageHeader eyebrow="control room" title="Admin control">
+      <LedgerPageHeader title="Admin control">
         <template #actions>
           <button
             type="button"

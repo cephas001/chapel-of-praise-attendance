@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-canvas text-ink font-sans pb-24">
     <main class="mx-auto max-w-6xl px-5 pt-6 sm:px-8">
-      <LedgerPageHeader eyebrow="attendance register" title="Scanner">
+      <LedgerPageHeader title="Scanner">
         <template #status>
           <span class="led-eyebrow flex items-center gap-2">
             <span

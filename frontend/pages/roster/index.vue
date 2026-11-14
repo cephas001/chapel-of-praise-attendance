@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen bg-canvas pb-24 font-sans text-ink">
     <main class="mx-auto max-w-6xl px-5 pt-8 sm:px-8">
-      <LedgerPageHeader eyebrow="roster register" title="Active rosters">
+      <LedgerPageHeader eyebrow="roster records" title="Event rosters">
         <template #actions>
           <button
             type="button"
@@ -20,7 +20,9 @@
         </template>
       </LedgerPageHeader>
 
-      <div class="grid grid-cols-1 gap-10 pt-8 lg:grid-cols-12 lg:gap-0 lg:pt-10">
+      <div
+        class="grid grid-cols-1 gap-10 pt-8 lg:grid-cols-12 lg:gap-0 lg:pt-10"
+      >
         <div class="lg:col-span-4 lg:pr-8">
           <LedgerEventRegister
             v-model:isOpen="isRegistryOpen"
@@ -35,10 +37,10 @@
           <div v-if="!selectedEvent" class="lg:min-h-[22rem]">
             <p class="led-eyebrow">no event selected</p>
             <h2 class="led-display mt-2 max-w-sm text-[28px] sm:text-[32px]">
-              Choose an event to read its roster.
+              Choose an event to see its roster.
             </h2>
             <p class="mt-3 max-w-sm text-sm leading-relaxed text-muted">
-              Only events that are currently open appear in the register.
+              Only events that are currently open appear here.
             </p>
           </div>
 

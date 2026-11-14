@@ -3,8 +3,30 @@ const bcrypt = require("bcrypt");
 const admin = require("firebase-admin");
 const jwt = require("jsonwebtoken");
 const prisma = require("../prismaClient");
+const { createRateLimiter } = require("../middleware/rateLimit");
+const { invalidateUserAuthCache } = require("../middleware/auth");
 
 const router = express.Router();
+
+// Keyed by IP *and* email so one attacker cannot spray many accounts from a
+// single address, and cannot lock a victim out from an unrelated address.
+// Only failed password checks count toward the lockout; a successful login
+// resets the pair's counter.
+const loginLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  countFailuresOnly: true,
+  failureStatuses: [401],
+  keyGenerator: (req) => {
+    const email = String(req.body?.email || "")
+      .trim()
+      .toLowerCase();
+    // Require both parts so a malformed request cannot create a shared key.
+    if (!email || !req.ip) return null;
+    return `login:${req.ip}:${email}`;
+  },
+  message: "Too many login attempts. Please wait and try again.",
+});
 
 // Initialize Firebase Admin (Required to verify the token Google sends)
 if (!admin.apps.length) {
@@ -21,17 +43,26 @@ if (!admin.apps.length) {
 // ==========================================
 // STANDARD EMAIL/PASSWORD LOGIN
 // ==========================================
-router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+router.post("/login", loginLimiter, async (req, res) => {
+  const { email, password } = req.body || {};
+  const normalizedEmail =
+    typeof email === "string" ? email.trim().toLowerCase() : "";
+
+  if (!normalizedEmail || typeof password !== "string" || password === "") {
+    return res.status(400).json({ error: "Email and password are required." });
+  }
 
   try {
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
 
     if (!user || !user.is_active) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
     const validPassword = await bcrypt.compare(password, user.password_hash);
+
     if (!validPassword) {
       return res.status(401).json({ error: "Invalid credentials" });
     }
@@ -41,6 +72,8 @@ router.post("/login", async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "7d" },
     );
+
+    invalidateUserAuthCache(user.id);
 
     res.json({
       message: "Login successful",
@@ -66,7 +99,7 @@ router.post("/login", async (req, res) => {
 // GOOGLE OAUTH TOKEN EXCHANGE
 // ==========================================
 router.post("/google", async (req, res) => {
-  const { token } = req.body;
+  const { token } = req.body || {};
 
   if (!token) {
     return res.status(400).json({ error: "No token provided" });
@@ -75,7 +108,14 @@ router.post("/google", async (req, res) => {
   try {
     // 1. Verify the Google token using Firebase Admin
     const decodedToken = await admin.auth().verifyIdToken(token);
-    const googleEmail = decodedToken.email;
+    const googleEmail =
+      typeof decodedToken.email === "string"
+        ? decodedToken.email.trim().toLowerCase()
+        : "";
+
+    if (!googleEmail) {
+      return res.status(401).json({ error: "Google account has no email." });
+    }
 
     // 2. Check the COPAMS Database for the user
     const user = await prisma.user.findUnique({
@@ -95,6 +135,8 @@ router.post("/google", async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "7d" },
     );
+
+    invalidateUserAuthCache(user.id);
 
     // 5. Return identical payload structure
     res.json({

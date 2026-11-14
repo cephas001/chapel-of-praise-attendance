@@ -1,10 +1,15 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
 const prisma = require("../prismaClient");
-const { authenticateToken, requireSuperAdmin } = require("../middleware/auth");
+const {
+  authenticateToken,
+  requireSuperAdmin,
+  invalidateUserAuthCache,
+} = require("../middleware/auth");
 const paginate = require("../middleware/paginate");
 const multer = require("multer");
 const { createClient } = require("@supabase/supabase-js");
+const { closeUserConnections } = require("../sseHub");
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -231,6 +236,7 @@ router.patch("/:id", authenticateToken, requireSuperAdmin, async (req, res) => {
       },
     });
 
+    invalidateUserAuthCache(updatedUser.id);
     res.json(updatedUser);
   } catch (error) {
     console.error("Error updating user:", error);
@@ -251,6 +257,8 @@ router.delete(
           .json({ error: "You cannot delete your own account." });
       }
       await prisma.user.delete({ where: { id: req.params.id } });
+      invalidateUserAuthCache(req.params.id);
+      closeUserConnections(req.params.id);
       res.json({ message: "User deleted successfully" });
     } catch (error) {
       console.error("Error deleting user:", error);

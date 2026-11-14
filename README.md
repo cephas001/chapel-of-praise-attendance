@@ -85,6 +85,24 @@ npm run dev -- -o
 
 \`\`\`
 
+## 🚀 Production Deployment
+
+Set the backend start command to `npm run deploy` instead of `npm start`. That
+script applies the Prisma schema with `prisma db push` (which adds the indexes
+declared in `prisma/schema.prisma`) before the API boots, so a release can
+never serve queries against an unindexed schema.
+
+\`\`\`bash
+cd backend
+npm run deploy
+\`\`\`
+
+`prisma db push` is run once per deploy, not on every process restart, to keep
+restarts fast. If your platform only accepts a start command, set it to
+`npm run deploy`. The schema currently declares the attendance scan lookup
+indexes, the assignment event index and the inbox index; no destructive change
+is implied, so the push applies without a reset.
+
 ## 🧪 Testing the Flow
 
 1. **Initial Setup:** Send a `POST` request to `http://localhost:5000/api/test-setup` to create the default Super Admin account (Username: `super_admin_1`, Password: `password123`).

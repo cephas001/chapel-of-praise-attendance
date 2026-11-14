@@ -4,6 +4,28 @@ const { authenticateToken, requireSuperAdmin } = require("../middleware/auth");
 
 const router = express.Router();
 
+const MAX_ROSTER_SIZE = 500;
+const VALID_TASK_TYPES = new Set(["SCANNER", "ARRANGER"]);
+
+// Ushers may read the roster of a live event so they know their post. Rosters
+// for upcoming, completed or archived events remain Super Admin only because
+// they may contain unpublished staffing decisions.
+const USHER_READABLE_EVENT_STATUSES = new Set([
+  "SIGN_IN_ACTIVE",
+  "SYNCING_PHASE",
+  "SIGN_OUT_ACTIVE",
+]);
+
+const normalizeIdList = (value) => {
+  if (!Array.isArray(value)) return null;
+
+  const ids = value
+    .filter((id) => typeof id === "string" && id.trim() !== "")
+    .map((id) => id.trim());
+
+  return [...new Set(ids)];
+};
+
 // ==========================================
 // GENERATE ROSTER ALGORITHM
 // ==========================================
@@ -14,22 +36,79 @@ router.post(
   async (req, res) => {
     try {
       const { eventId } = req.params;
-      const {
-        availableUserIds,
-        activeZoneIds,
-        lowTrafficZoneIds,
-        scanningOnly,
-      } = req.body;
+      const body = req.body || {};
+      const availableUserIds = normalizeIdList(body.availableUserIds);
+      const activeZoneIds = normalizeIdList(body.activeZoneIds);
+      const lowTrafficZoneIds = normalizeIdList(body.lowTrafficZoneIds ?? []);
+      const scanningOnly = body.scanningOnly === true;
+      const warnings = [];
+
+      if (!availableUserIds || !activeZoneIds || !lowTrafficZoneIds) {
+        return res.status(400).json({
+          error:
+            "availableUserIds, activeZoneIds and lowTrafficZoneIds must be arrays of IDs.",
+        });
+      }
+
+      if (availableUserIds.length === 0) {
+        return res.status(400).json({
+          error: "Select at least one available team member.",
+        });
+      }
+
+      if (activeZoneIds.length === 0) {
+        return res.status(400).json({
+          error: "Select at least one active zone.",
+        });
+      }
+
+      if (
+        availableUserIds.length > MAX_ROSTER_SIZE ||
+        activeZoneIds.length > MAX_ROSTER_SIZE
+      ) {
+        return res.status(400).json({
+          error: `A roster may contain at most ${MAX_ROSTER_SIZE} people or zones.`,
+        });
+      }
+
+      const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        select: { id: true, status: true },
+      });
+
+      if (!event) {
+        return res.status(404).json({ error: "Event not found." });
+      }
+
+      if (event.status === "ARCHIVED") {
+        return res.status(409).json({
+          error: "An archived event cannot receive a new roster.",
+        });
+      }
 
       // 1. Fetch Users & Sort by least active first
-      const users = await prisma.user.findMany({
+      const requestedUsers = await prisma.user.findMany({
         where: { id: { in: availableUserIds } },
         include: { _count: { select: { assignments: true } } },
       });
+      const users = requestedUsers.filter((user) => user.is_active);
+
+      if (users.length !== availableUserIds.length) {
+        warnings.push(
+          `${availableUserIds.length - users.length} selected team member(s) were unavailable or inactive and were not assigned.`,
+        );
+      }
+
+      if (users.length === 0) {
+        return res.status(400).json({
+          error: "None of the selected team members are active.",
+        });
+      }
+
       users.sort((a, b) => a._count.assignments - b._count.assignments);
 
-      let ushers = users.filter((u) => u.unit === "USHER");
-      let others = users.filter((u) => u.unit !== "USHER");
+      const ushers = users.filter((u) => u.unit === "USHER");
+      const others = users.filter((u) => u.unit !== "USHER");
 
       // 2. Fetch Active Zones
       const zones = await prisma.zone.findMany({
@@ -37,11 +116,26 @@ router.post(
         orderBy: [{ prefix: "asc" }, { name: "asc" }],
       });
 
-      let highTraffic = zones.filter((z) => !lowTrafficZoneIds.includes(z.id));
-      let lowTraffic = zones.filter((z) => lowTrafficZoneIds.includes(z.id));
+      if (zones.length === 0) {
+        return res.status(400).json({
+          error: "None of the selected zones exist.",
+        });
+      }
+
+      if (zones.length !== activeZoneIds.length) {
+        warnings.push(
+          "Some selected zones no longer exist and were ignored.",
+        );
+      }
+
+      const lowTrafficSet = new Set(
+        lowTrafficZoneIds.filter((id) => activeZoneIds.includes(id)),
+      );
+
+      let highTraffic = zones.filter((z) => !lowTrafficSet.has(z.id));
+      let lowTraffic = zones.filter((z) => lowTrafficSet.has(z.id));
 
       const proposedAssignments = [];
-      const warnings = [];
 
       // ==========================================
       // PRE-LOOP: CHOIR & MEDIA SPECIAL ASSIGNMENT
@@ -333,20 +427,109 @@ router.post(
   async (req, res) => {
     try {
       const { eventId } = req.params;
-      const { assignments } = req.body;
+      const assignments = req.body?.assignments;
 
-      await prisma.$transaction([
-        prisma.assignment.deleteMany({ where: { event_id: eventId } }),
-        prisma.assignment.createMany({
-          data: assignments.map((a) => ({
-            user_id: a.user_id,
-            event_id: a.event_id,
-            zone_name: a.zone_name,
-            task_type: a.task_type,
-            is_primary: a.is_primary,
-          })),
-        }),
-      ]);
+      if (!Array.isArray(assignments)) {
+        return res
+          .status(400)
+          .json({ error: "Assignments must be an array." });
+      }
+
+      if (assignments.length > MAX_ROSTER_SIZE) {
+        return res.status(400).json({
+          error: `A roster may contain at most ${MAX_ROSTER_SIZE} assignments.`,
+        });
+      }
+
+      const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        select: { id: true, status: true },
+      });
+
+      if (!event) {
+        return res.status(404).json({ error: "Event not found." });
+      }
+
+      if (event.status === "ARCHIVED") {
+        return res.status(409).json({
+          error: "An archived event cannot receive a new roster.",
+        });
+      }
+
+      const seenAssignments = new Set();
+      const normalizedAssignments = [];
+
+      for (const assignment of assignments) {
+        const userId =
+          typeof assignment?.user_id === "string"
+            ? assignment.user_id.trim()
+            : "";
+        const zoneName =
+          typeof assignment?.zone_name === "string"
+            ? assignment.zone_name.trim()
+            : "";
+        const taskType =
+          typeof assignment?.task_type === "string"
+            ? assignment.task_type.trim().toUpperCase()
+            : "";
+        const isPrimary = assignment?.is_primary ?? true;
+
+        if (!userId || !zoneName || !VALID_TASK_TYPES.has(taskType)) {
+          return res.status(400).json({
+            error:
+              "Every assignment needs a valid user, zone and task type.",
+          });
+        }
+
+        if (typeof isPrimary !== "boolean") {
+          return res.status(400).json({
+            error: "Assignment is_primary must be a boolean.",
+          });
+        }
+
+        const assignmentKey = `${userId}:${zoneName}`;
+
+        if (seenAssignments.has(assignmentKey)) {
+          return res.status(400).json({
+            error: "The same person cannot be assigned to the same zone twice.",
+          });
+        }
+
+        seenAssignments.add(assignmentKey);
+
+        normalizedAssignments.push({
+          user_id: userId,
+          // Always derive the event from the route, never from the payload.
+          event_id: eventId,
+          zone_name: zoneName,
+          task_type: taskType,
+          is_primary: isPrimary,
+        });
+      }
+
+      if (normalizedAssignments.length > 0) {
+        const userIds = [
+          ...new Set(normalizedAssignments.map((a) => a.user_id)),
+        ];
+        const existingUsers = await prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true },
+        });
+
+        if (existingUsers.length !== userIds.length) {
+          return res.status(400).json({
+            error: "One or more selected users no longer exist.",
+          });
+        }
+      }
+
+      await prisma.$transaction(async (tx) => {
+        await tx.assignment.deleteMany({ where: { event_id: eventId } });
+
+        if (normalizedAssignments.length > 0) {
+          await tx.assignment.createMany({ data: normalizedAssignments });
+        }
+      });
 
       res.json({ success: true, message: "Roster published successfully!" });
     } catch (error) {
@@ -382,16 +565,55 @@ router.get("/:eventId/my-duty", authenticateToken, async (req, res) => {
 });
 
 // ==========================================
-// GET ENTIRE ROSTER FOR SUPER ADMIN
+// GET ENTIRE ROSTER
+// Super Admins may read any event. Authenticated ushers may read only the
+// roster of an event that is currently live; writes stay Super Admin only.
 // ==========================================
 router.get("/:eventId", authenticateToken, async (req, res) => {
   try {
     const { eventId } = req.params;
+
+    if (req.user.role !== "SUPER_ADMIN") {
+      const event = await prisma.event.findUnique({
+        where: { id: eventId },
+        select: { status: true },
+      });
+
+      if (!event) {
+        return res.status(404).json({ error: "Event not found." });
+      }
+
+      if (!USHER_READABLE_EVENT_STATUSES.has(event.status)) {
+        return res.status(403).json({
+          error: "The roster is only available while this event is live.",
+        });
+      }
+    }
+
     const assignments = await prisma.assignment.findMany({
       where: { event_id: eventId },
-      include: { user: true }, // Crucial: Includes the user data for the Review UI
+      select: {
+        id: true,
+        user_id: true,
+        event_id: true,
+        zone_name: true,
+        task_type: true,
+        is_primary: true,
+        created_at: true,
+        user: {
+          select: {
+            id: true,
+            username: true,
+            first_name: true,
+            last_name: true,
+            unit: true,
+            avatar_url: true,
+          },
+        },
+      },
       orderBy: [{ task_type: "asc" }, { is_primary: "desc" }],
     });
+
     res.json(assignments);
   } catch (error) {
     console.error("Fetch Roster Error:", error);

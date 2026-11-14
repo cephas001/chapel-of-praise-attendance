@@ -1,8 +1,43 @@
 const express = require("express");
+const { randomInt } = require("crypto");
+const { Readable } = require("stream");
+const { pipeline } = require("stream/promises");
 const prisma = require("../prismaClient");
 const { authenticateToken, requireSuperAdmin } = require("../middleware/auth");
+const { createRateLimiter } = require("../middleware/rateLimit");
+const { broadcastToAll } = require("../sseHub");
 
 const router = express.Router();
+
+// The lifecycle is intentionally forward-moving. Corrections are still
+// possible inside the active phases, but completed/archived events cannot be
+// silently reopened.
+const EVENT_STATUS_TRANSITIONS = {
+  UPCOMING: ["SIGN_IN_ACTIVE", "ARCHIVED"],
+  SIGN_IN_ACTIVE: ["SYNCING_PHASE", "SIGN_OUT_ACTIVE", "ARCHIVED"],
+  SYNCING_PHASE: ["SIGN_IN_ACTIVE", "SIGN_OUT_ACTIVE", "ARCHIVED"],
+  SIGN_OUT_ACTIVE: [
+    "SIGN_IN_ACTIVE",
+    "SYNCING_PHASE",
+    "COMPLETED",
+    "ARCHIVED",
+  ],
+  COMPLETED: ["ARCHIVED"],
+  ARCHIVED: [],
+};
+
+const UNLOCKABLE_EVENT_STATUSES = new Set([
+  "SIGN_IN_ACTIVE",
+  "SYNCING_PHASE",
+  "SIGN_OUT_ACTIVE",
+]);
+
+const unlockLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 12,
+  keyGenerator: (req) => `unlock:${req.user.id}:${req.params.id}`,
+  message: "Too many unlock attempts. Please wait and try again.",
+});
 
 // GET /api/events/active
 router.get("/active", authenticateToken, async (req, res) => {
@@ -36,16 +71,33 @@ router.get("/", authenticateToken, requireSuperAdmin, async (req, res) => {
 
 // POST /api/events
 router.post("/", authenticateToken, requireSuperAdmin, async (req, res) => {
-  const { name, date, created_by_id } = req.body;
+  const { name, date } = req.body || {};
+  const trimmedName = typeof name === "string" ? name.trim() : "";
+  const eventDate = new Date(date);
+
+  if (!trimmedName) {
+    return res.status(400).json({ error: "Event name is required." });
+  }
+
+  if (Number.isNaN(eventDate.getTime())) {
+    return res.status(400).json({ error: "A valid event date is required." });
+  }
+
   try {
+    const pinAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
     const generatePin = () =>
-      Math.random().toString(36).substring(2, 8).toUpperCase();
+      Array.from(
+        { length: 6 },
+        () => pinAlphabet[randomInt(pinAlphabet.length)],
+      ).join("");
+
     const newEvent = await prisma.event.create({
       data: {
-        name: name,
-        date: new Date(date),
+        name: trimmedName,
+        date: eventDate,
         status: "UPCOMING",
-        created_by_id: created_by_id,
+        // Attribute the event to the authenticated admin, not a client field.
+        created_by_id: req.user.id,
         unlock_pin: generatePin(),
       },
     });
@@ -77,13 +129,77 @@ router.patch(
   authenticateToken,
   requireSuperAdmin,
   async (req, res) => {
+    const nextStatus =
+      typeof req.body?.status === "string"
+        ? req.body.status.trim().toUpperCase()
+        : "";
+
+    if (!nextStatus) {
+      return res.status(400).json({ error: "A target status is required." });
+    }
+
     try {
-      const updatedEvent = await prisma.event.update({
+      const currentEvent = await prisma.event.findUnique({
         where: { id: req.params.id },
-        data: { status: req.body.status },
+        select: { id: true, status: true },
       });
+
+      if (!currentEvent) {
+        return res.status(404).json({ error: "Event not found." });
+      }
+
+      if (currentEvent.status === nextStatus) {
+        const current = await prisma.event.findUnique({
+          where: { id: req.params.id },
+        });
+        return res.json({
+          message: `Event is already ${nextStatus}`,
+          event: current,
+        });
+      }
+
+      const allowedTransitions =
+        EVENT_STATUS_TRANSITIONS[currentEvent.status] || [];
+
+      if (!allowedTransitions.includes(nextStatus)) {
+        return res.status(409).json({
+          error: `Cannot move an event from ${currentEvent.status} to ${nextStatus}.`,
+        });
+      }
+
+      // Guard the update with the status we just read so two admins cannot
+      // race the same event into two different phases.
+      const updateResult = await prisma.event.updateMany({
+        where: { id: req.params.id, status: currentEvent.status },
+        data: { status: nextStatus },
+      });
+
+      if (updateResult.count === 0) {
+        return res.status(409).json({
+          error: "The event changed while this request was being processed.",
+        });
+      }
+
+      const updatedEvent = await prisma.event.findUnique({
+        where: { id: req.params.id },
+      });
+
+      if (!updatedEvent) {
+        return res.status(404).json({ error: "Event not found." });
+      }
+
+      // Tell every connected scanner/admin immediately so clients do not need
+      // to poll the status endpoint to notice a phase transition.
+      broadcastToAll({
+        type: "EVENT_STATUS",
+        event_id: updatedEvent.id,
+        event_name: updatedEvent.name,
+        status: updatedEvent.status,
+        updated_at: new Date().toISOString(),
+      });
+
       res.json({
-        message: `Event transitioned to ${req.body.status}`,
+        message: `Event transitioned to ${nextStatus}`,
         event: updatedEvent,
       });
     } catch (error) {
@@ -93,54 +209,118 @@ router.patch(
   },
 );
 
-// GET /api/events/:id/export
-router.get("/:id/export", async (req, res) => {
-  try {
-    const records = await prisma.attendanceRecord.findMany({
-      where: { event_id: req.params.id },
+const ATTENDANCE_CSV_BATCH_SIZE = 500;
+const ATTENDANCE_CSV_HEADER =
+  "Matric Number,First Name,Last Name,Department,Level,Scan Type,Scanned At,Synced At,Scanned By (Usher)\n";
+
+const escapeCsvValue = (value) => {
+  const stringValue = value == null ? "" : String(value);
+  return `"${stringValue.replace(/"/g, '""')}"`;
+};
+
+const formatAttendanceCsvRow = (record) =>
+  [
+    record.matric_number,
+    record.student?.first_name || "",
+    record.student?.last_name || "",
+    record.student?.department || "",
+    record.student?.level ?? "",
+    record.scan_type,
+    new Date(record.scanned_at).toLocaleString(),
+    new Date(record.synced_at).toLocaleString(),
+    record.usher?.email || "",
+  ]
+    .map(escapeCsvValue)
+    .join(",") + "\n";
+
+// Pull rows in cursor batches so the export never holds the full event in RAM.
+const attendanceCsvGenerator = async function* (eventId) {
+  yield ATTENDANCE_CSV_HEADER;
+
+  let cursor = null;
+
+  while (true) {
+    const batch = await prisma.attendanceRecord.findMany({
+      where: { event_id: eventId },
       include: { student: true, usher: { select: { email: true } } },
-      orderBy: { scanned_at: "asc" },
+      orderBy: [{ scanned_at: "asc" }, { id: "asc" }],
+      take: ATTENDANCE_CSV_BATCH_SIZE,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
 
-    if (records.length === 0) {
+    if (batch.length === 0) break;
+
+    for (const record of batch) {
+      yield formatAttendanceCsvRow(record);
+    }
+
+    if (batch.length < ATTENDANCE_CSV_BATCH_SIZE) break;
+
+    cursor = batch[batch.length - 1].id;
+  }
+};
+
+// GET /api/events/:id/export
+router.get("/:id/export", authenticateToken, requireSuperAdmin, async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const recordCount = await prisma.attendanceRecord.count({
+      where: { event_id: eventId },
+    });
+
+    if (recordCount === 0) {
       return res
         .status(404)
         .send("No attendance records found for this event.");
     }
 
-    let csvData =
-      "Matric Number,First Name,Last Name,Department,Level,Scan Type,Scanned At,Synced At,Scanned By (Usher)\n";
-    records.forEach((record) => {
-      const fName = record.student.first_name || "";
-      const lName = record.student.last_name || "";
-      const dept = record.student.department || "";
-      const level = record.student.level || "";
-      const scannedTime = new Date(record.scanned_at).toLocaleString();
-      const syncedTime = new Date(record.synced_at).toLocaleString();
-      csvData += `"${record.matric_number}","${fName}","${lName}","${dept}","${level}","${record.scan_type}","${scannedTime}","${syncedTime}","${record.usher.email}"\n`;
-    });
-
-    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=attendance_report_${req.params.id}.csv`,
+      `attachment; filename=attendance_report_${eventId}.csv`,
     );
-    res.status(200).send(csvData);
+    res.status(200);
+
+    // Streams each cursor batch to the client as it is read, honouring the
+    // response's backpressure instead of building the whole CSV in memory.
+    await pipeline(
+      Readable.from(attendanceCsvGenerator(eventId), { objectMode: false }),
+      res,
+    );
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Failed to generate report" });
+
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Failed to generate report" });
+    } else if (!res.destroyed) {
+      res.destroy(error);
+    }
   }
 });
 
 // POST /api/events/:id/unlock
-router.post("/:id/unlock", authenticateToken, async (req, res) => {
+router.post("/:id/unlock", authenticateToken, unlockLimiter, async (req, res) => {
   try {
-    const { pin } = req.body;
+    const submittedPin =
+      typeof req.body?.pin === "string"
+        ? req.body.pin.trim().toUpperCase()
+        : "";
+
+    if (!submittedPin) {
+      return res.status(400).json({ error: "An access PIN is required." });
+    }
+
     const event = await prisma.event.findUnique({
       where: { id: req.params.id },
+      select: { id: true, status: true, unlock_pin: true },
     });
 
-    if (!event || event.unlock_pin !== pin.trim().toUpperCase()) {
+    if (
+      !event ||
+      !UNLOCKABLE_EVENT_STATUSES.has(event.status) ||
+      event.unlock_pin !== submittedPin
+    ) {
       return res.status(403).json({ error: "Invalid Access PIN or QR Code." });
     }
 
@@ -229,6 +409,8 @@ router.get(
             select: {
               id: true,
               email: true,
+              first_name: true,
+              last_name: true,
               last_active: true,
             },
           }),
@@ -243,18 +425,22 @@ router.get(
 
       const throughput = Math.round(recentScans / 5); // Average scans per minute
 
-      // 3. Merge the grouped counts into the roster array
+      // 3. Index the grouped counts once so the roster merge is O(n) instead
+      // of running a linear find() for every usher.
+      const scanCountsByUsherAndType = new Map(
+        scanCounts.map((count) => [
+          `${count.usher_id}:${count.scan_type}`,
+          count._count._all,
+        ]),
+      );
+
+      // 4. Merge the grouped counts into the roster array
       const roster = ushers
         .map((u) => {
-          // Find the specific counts for this usher in the grouped results
           const signIns =
-            scanCounts.find(
-              (c) => c.usher_id === u.id && c.scan_type === "SIGN_IN",
-            )?._count._all || 0;
+            scanCountsByUsherAndType.get(`${u.id}:SIGN_IN`) || 0;
           const signOuts =
-            scanCounts.find(
-              (c) => c.usher_id === u.id && c.scan_type === "SIGN_OUT",
-            )?._count._all || 0;
+            scanCountsByUsherAndType.get(`${u.id}:SIGN_OUT`) || 0;
           const totalScans = signIns + signOuts;
 
           return {

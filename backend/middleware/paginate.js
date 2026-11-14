@@ -1,10 +1,17 @@
 // backend/middleware/paginate.js
 
+const MAX_LIMIT = 100;
+
 const paginate = (defaultLimit = 10) => {
   return (req, res, next) => {
     // 1. Extract and sanitize query parameters
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || defaultLimit;
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const requestedLimit = parseInt(req.query.limit, 10);
+    // Hard cap the page size so a single request can never ask for the whole table.
+    const limit = Math.min(
+      requestedLimit > 0 ? requestedLimit : defaultLimit,
+      MAX_LIMIT,
+    );
     const skip = (page - 1) * limit;
 
     const search = req.query.search || "";

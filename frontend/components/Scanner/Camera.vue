@@ -15,7 +15,7 @@
       <div class="min-w-0">
         <h3 class="text-base font-semibold text-ink">Camera paused</h3>
         <p class="mt-1 max-w-sm text-sm leading-relaxed text-muted">
-          Start the scanner when your post opens. Leaving it paused saves the
+          Start the scanner when you want to scan. Leaving it paused saves the
           device's battery.
         </p>
       </div>
@@ -35,9 +35,7 @@
           @click="toggleTorch"
           class="flex h-11 w-11 items-center justify-center border border-white/20 bg-ink/80 text-white transition-colors hover:bg-ink"
           :title="isTorchOn ? 'Turn Flashlight Off' : 'Turn Flashlight On'"
-          :aria-label="
-            isTorchOn ? 'Turn flashlight off' : 'Turn flashlight on'
-          "
+          :aria-label="isTorchOn ? 'Turn flashlight off' : 'Turn flashlight on'"
           :aria-pressed="isTorchOn"
         >
           <Icon

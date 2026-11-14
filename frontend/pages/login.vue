@@ -19,7 +19,7 @@
           Attendance, taken with ease.
         </h1>
         <p class="mt-4 text-sm leading-relaxed text-white/65">
-          Ushers scan anywhere. The register stays on the device and syncs when
+          Ushers scan anywhere. The records stays on the device and syncs when
           the network returns.
         </p>
       </div>

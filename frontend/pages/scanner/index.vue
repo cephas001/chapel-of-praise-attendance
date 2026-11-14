@@ -78,11 +78,11 @@
                   <h2
                     class="led-display mt-2 max-w-sm text-[26px] sm:text-[30px]"
                   >
-                    Locked to the venue.
+                    Event locked.
                   </h2>
                   <p class="mt-2 max-w-md text-sm leading-relaxed text-muted">
-                    The Super Admin must be present. Scan their code or enter
-                    the six-digit PIN to open scanning.
+                    The Super Admin must be present. Enter the access code to
+                    open scanning.
                   </p>
                 </div>
                 <span

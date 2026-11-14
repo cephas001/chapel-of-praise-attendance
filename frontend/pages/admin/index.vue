@@ -72,10 +72,10 @@
           <div v-if="!selectedEvent" class="lg:min-h-[22rem]">
             <p class="led-eyebrow">no event selected</p>
             <h2 class="led-display mt-2 max-w-sm text-[28px] sm:text-[32px]">
-              Select an event to open its controls.
+              Select an event to manage it.
             </h2>
             <p class="mt-3 max-w-sm text-sm leading-relaxed text-muted">
-              From here you manage everything relating to an event.
+              From here you control everything relating to an event.
             </p>
           </div>
 

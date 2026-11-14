@@ -1,14 +1,11 @@
 <template>
   <section aria-label="Event register" class="min-w-0">
     <div class="flex items-baseline justify-between gap-4">
-      <h2 class="led-eyebrow">event register</h2>
+      <h2 class="led-eyebrow">events</h2>
       <span class="led-eyebrow">{{ countLabel }}</span>
     </div>
 
-    <p
-      v-if="isLoading && events.length === 0"
-      class="led-eyebrow mt-5"
-    >
+    <p v-if="isLoading && events.length === 0" class="led-eyebrow mt-5">
       loading…
     </p>
 
@@ -26,7 +23,9 @@
       @click="$emit('update:isOpen', true)"
     >
       <span class="min-w-0">
-        <span class="led-eyebrow block">{{ formatDate(selectedEvent.date) }}</span>
+        <span class="led-eyebrow block">{{
+          formatDate(selectedEvent.date)
+        }}</span>
         <span class="mt-1 block truncate text-[15px] font-semibold text-ink">
           {{ selectedEvent.name }}
         </span>
@@ -39,11 +38,7 @@
       class="mt-4 max-h-[26rem] overflow-y-auto border-t border-rule"
       :class="{ 'hidden lg:block': selectedEvent && !isOpen }"
     >
-      <li
-        v-for="event in events"
-        :key="event.id"
-        class="border-b border-rule"
-      >
+      <li v-for="event in events" :key="event.id" class="border-b border-rule">
         <button
           type="button"
           class="flex w-full items-start justify-between gap-4 py-3.5 pl-3 pr-2 text-left transition-colors"
@@ -111,7 +106,6 @@ const countLabel = computed(() => {
   if (props.isLoading && props.events.length === 0) return "";
   return `${props.events.length} events`;
 });
-
 
 const formatDate = (date) => {
   const parsed = new Date(date);

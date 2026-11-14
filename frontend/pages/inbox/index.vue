@@ -20,8 +20,7 @@
           <p class="led-eyebrow">no messages</p>
           <h2 class="led-display mt-2 text-[28px]">You're all caught up.</h2>
           <p class="mt-3 max-w-sm text-sm leading-relaxed text-muted">
-            Announcements from your admin will land here. Records and scans are
-            unaffected.
+            Announcements from your leader will appear here.
           </p>
         </div>
 

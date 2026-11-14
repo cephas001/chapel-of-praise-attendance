@@ -29,7 +29,7 @@
 
     <section class="flex items-center px-6 py-10 sm:px-10 lg:px-16">
       <div class="w-full max-w-sm">
-        <p class="led-eyebrow">staff access</p>
+        <p class="led-eyebrow">access</p>
         <h2 class="led-display mt-2 text-[30px]">Sign in</h2>
         <p class="mt-2 text-sm leading-relaxed text-muted">
           Use your Google account, or the email and password issued to you.
